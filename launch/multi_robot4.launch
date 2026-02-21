@@ -1,0 +1,134 @@
+<launch>
+  <!-- 1. 核心参数 -->
+  <arg name="model" default="$(env TURTLEBOT3_MODEL)" doc="burger, waffle, waffle_pi"/>
+  <arg name="map_file" default="$(find robot_vs)/maps/map.yaml" doc="全局地图路径"/>
+  <arg name="world_file" default="$(find robot_vs)/worlds/world0.world" doc="仿真世界"/>
+
+  <!-- 2. 最先启动map_server -->
+  <node name="map_server" pkg="map_server" type="map_server" output="screen"
+        args="$(arg map_file)" />
+
+  <!-- 3. 启动Gazebo仿真环境 -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_file)"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="false"/>
+  </include>
+
+  <!-- ============================================== -->
+  <!-- 4. 红方机器人1（命名空间：robot_red） -->
+  <!-- ============================================== -->
+  <group ns="robot_red">
+    <!-- 4.1 加载机器人URDF -->
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+    
+    <!-- 4.2 发布机器人状态（TF前缀和命名空间一致） -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="50.0"/>
+      <param name="tf_prefix" value="robot_red"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+
+    <!-- 4.3 在Gazebo中生成红方机器人 -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+          args="-urdf -model robot_red -x -2.0 -y 0.5 -z 0.0 -Y 0.0 -param /robot_red/robot_description"/>
+  </group>
+
+  <!-- 4.4 启动红方AMCL -->
+  <include file="$(find robot_vs)/launch/amcl.launch">
+    <arg name="robot_namespace" value="robot_red" />
+    <arg name="initial_pose_x" value="-2.0"/>
+    <arg name="initial_pose_y" value="0.5"/>
+    <arg name="initial_pose_a" value="0.0"/>
+  </include>
+
+  <!-- 4.5 启动红方move_base -->
+  <include file="$(find robot_vs)/launch/move_base.launch">
+    <arg name="robot_namespace" value="robot_red" />
+  </include>
+
+  <!-- ============================================== -->
+  <!-- 5. 红方机器人2（命名空间：robot_red2） -->
+  <!-- ============================================== -->
+  <group ns="robot_red2">
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="50.0"/>
+      <param name="tf_prefix" value="robot_red2"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+          args="-urdf -model robot_red2 -x -2.0 -y -0.5 -z 0.0 -Y 0.0 -param /robot_red2/robot_description"/>
+  </group>
+
+  <include file="$(find robot_vs)/launch/amcl.launch">
+    <arg name="robot_namespace" value="robot_red2" />
+    <arg name="initial_pose_x" value="-2.0"/>
+    <arg name="initial_pose_y" value="-0.5"/>
+    <arg name="initial_pose_a" value="0.0"/>
+  </include>
+
+  <include file="$(find robot_vs)/launch/move_base.launch">
+    <arg name="robot_namespace" value="robot_red2" />
+  </include>
+
+  <!-- ============================================== -->
+  <!-- 6. 蓝方机器人1（命名空间：robot_blue） -->
+  <!-- ============================================== -->
+  <group ns="robot_blue">
+    <!-- 5.1 加载机器人URDF -->
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+    
+    <!-- 5.2 发布机器人状态 -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="50.0"/>
+      <param name="tf_prefix" value="robot_blue"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+
+    <!-- 5.3 在Gazebo中生成蓝方机器人 -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+          args="-urdf -model robot_blue -x 2.0 -y 0.5 -z 0.0 -Y 3.14 -param /robot_blue/robot_description"/>
+  </group>
+
+  <!-- 5.4 启动蓝方AMCL -->
+  <include file="$(find robot_vs)/launch/amcl.launch">
+    <arg name="robot_namespace" value="robot_blue" />
+    <arg name="initial_pose_x" value="2.0"/>
+    <arg name="initial_pose_y" value="0.5"/>
+    <arg name="initial_pose_a" value="3.14"/>
+  </include>
+
+  <!-- 5.5 启动蓝方move_base -->
+  <include file="$(find robot_vs)/launch/move_base.launch">
+    <arg name="robot_namespace" value="robot_blue" />
+  </include>
+
+  <!-- ============================================== -->
+  <!-- 7. 蓝方机器人2（命名空间：robot_blue2） -->
+  <!-- ============================================== -->
+  <group ns="robot_blue2">
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="50.0"/>
+      <param name="tf_prefix" value="robot_blue2"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" output="screen"
+          args="-urdf -model robot_blue2 -x 2.0 -y -0.5 -z 0.0 -Y 3.14 -param /robot_blue2/robot_description"/>
+  </group>
+  <include file="$(find robot_vs)/launch/amcl.launch">
+    <arg name="robot_namespace" value="robot_blue2" />
+    <arg name="initial_pose_x" value="2.0"/>
+    <arg name="initial_pose_y" value="-0.5"/>
+    <arg name="initial_pose_a" value="3.14"/>
+  </include>
+  <include file="$(find robot_vs)/launch/move_base.launch">
+    <arg name="robot_namespace" value="robot_blue2" />
+  </include>
+
+  <!-- 8. 启动rviz（需同步修改rviz配置） -->
+  <node name="rviz" pkg="rviz" type="rviz" output="screen"
+        args="-d $(find robot_vs)/rviz/multi_robot.rviz"/>
+</launch>

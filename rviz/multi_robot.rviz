@@ -6,20 +6,34 @@ Panels:
       Expanded:
         - /Global Options1
         - /RobotModel [Red]1
+        - /RobotModel [Red2]1
         - /RobotModel [Blue]1
+        - /RobotModel [Blue2]1
         - /LaserScan [Red]1
+        - /LaserScan [Red2]1
         - /LaserScan [Blue]1
+        - /LaserScan [Blue2]1
         - /Map1
         - /Global Map [Red]1/Costmap1
         - /Global Map [Red]1/Planner1
+        - /Global Map [Red2]1/Costmap1
+        - /Global Map [Red2]1/Planner1
         - /Local Map [Red]1/Costmap1
         - /Local Map [Red]1/Planner1
+        - /Local Map [Red2]1/Costmap1
+        - /Local Map [Red2]1/Planner1
         - /Global Map [Blue]1/Costmap1
         - /Global Map [Blue]1/Planner1
+        - /Global Map [Blue2]1/Costmap1
+        - /Global Map [Blue2]1/Planner1
         - /Local Map [Blue]1/Costmap1
         - /Local Map [Blue]1/Planner1
+        - /Local Map [Blue2]1/Costmap1
+        - /Local Map [Blue2]1/Planner1
         - /Goal [Red]1
+        - /Goal [Red2]1
         - /Goal [Blue]1
+        - /Goal [Blue2]1
       Splitter Ratio: 0.5
     Tree Height: 757
   - Class: rviz/Selection
@@ -63,6 +77,7 @@ Visualization Manager:
       Plane Cell Count: 20
       Reference Frame: <Fixed Frame>
       Value: true
+    # 红1机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -112,6 +127,57 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    # 红2机器人模型
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_scan:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        caster_back_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        wheel_left_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheel_right_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel [Red2]
+      Robot Description: /robot_red2/robot_description
+      TF Prefix: robot_red2
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    # 蓝1机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -161,6 +227,57 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    # 蓝2机器人模型
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_footprint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        base_scan:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        caster_back_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        imu_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        wheel_left_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        wheel_right_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel [Blue2]
+      Robot Description: /robot_blue2/robot_description
+      TF Prefix: robot_blue2
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    # 红1激光雷达
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -189,6 +306,36 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    # 红2激光雷达（浅绿区分）
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/LaserScan
+      Color: 0; 200; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: LaserScan [Red2]
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.030000001192092896
+      Style: Flat Squares
+      Topic: /robot_red2/scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    # 蓝1激光雷达
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -217,6 +364,36 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    # 蓝2激光雷达（深红区分）
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/LaserScan
+      Color: 200; 0; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: LaserScan [Blue2]
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.030000001192092896
+      Style: Flat Squares
+      Topic: /robot_blue2/scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    # 全局地图
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
@@ -227,6 +404,7 @@ Visualization Manager:
       Unreliable: false
       Use Timestamp: false
       Value: true
+    # 红1全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -250,6 +428,31 @@ Visualization Manager:
       Topic: /robot_red/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
+    # 红2全局规划路径
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 0; 0; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Planner Plan [Red2]
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /robot_red2/move_base/NavfnROS/plan
+      Unreliable: false
+      Value: true
+    # 蓝1全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -273,6 +476,31 @@ Visualization Manager:
       Topic: /robot_blue/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
+    # 蓝2全局规划路径
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 0; 0; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Planner Plan [Blue2]
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /robot_blue2/move_base/NavfnROS/plan
+      Unreliable: false
+      Value: true
+    # 红1全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -310,6 +538,7 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Red]
+    # 红1局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -355,6 +584,91 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Red]
+    # 红2全局代价地图分组
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 0.699999988079071
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: true
+          Enabled: true
+          Name: Costmap
+          Topic: /robot_red2/move_base/global_costmap/costmap
+          Unreliable: false
+          Use Timestamp: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 0; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Planner
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /robot_red2/move_base/DWAPlannerROS/global_plan
+          Unreliable: false
+          Value: true
+      Enabled: true
+      Name: Global Map [Red2]
+    # 红2局部代价地图分组
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Class: rviz/Polygon
+          Color: 0; 0; 0
+          Enabled: true
+          Name: Polygon
+          Topic: /robot_red2/move_base/local_costmap/footprint
+          Unreliable: false
+          Value: true
+        - Alpha: 0.699999988079071
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: false
+          Enabled: true
+          Name: Costmap
+          Topic: /robot_red2/move_base/local_costmap/costmap
+          Unreliable: false
+          Use Timestamp: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Planner
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /robot_red2/move_base/DWAPlannerROS/local_plan
+          Unreliable: false
+          Value: true
+      Enabled: false
+      Name: Local Map [Red2]
+    # 蓝1全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -392,6 +706,7 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Blue]
+    # 蓝1局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -437,6 +752,91 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Blue]
+    # 蓝2全局代价地图分组
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 0.699999988079071
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: true
+          Enabled: true
+          Name: Costmap
+          Topic: /robot_blue2/move_base/global_costmap/costmap
+          Unreliable: false
+          Use Timestamp: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 0; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Planner
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /robot_blue2/move_base/DWAPlannerROS/global_plan
+          Unreliable: false
+          Value: true
+      Enabled: true
+      Name: Global Map [Blue2]
+    # 蓝2局部代价地图分组
+    - Class: rviz/Group
+      Displays:
+        - Alpha: 1
+          Class: rviz/Polygon
+          Color: 0; 0; 0
+          Enabled: true
+          Name: Polygon
+          Topic: /robot_blue2/move_base/local_costmap/footprint
+          Unreliable: false
+          Value: true
+        - Alpha: 0.699999988079071
+          Class: rviz/Map
+          Color Scheme: costmap
+          Draw Behind: false
+          Enabled: true
+          Name: Costmap
+          Topic: /robot_blue2/move_base/local_costmap/costmap
+          Unreliable: false
+          Use Timestamp: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Planner
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /robot_blue2/move_base/DWAPlannerROS/local_plan
+          Unreliable: false
+          Value: true
+      Enabled: false
+      Name: Local Map [Blue2]
+    # 红1AMCL粒子
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -453,6 +853,24 @@ Visualization Manager:
       Topic: /robot_red/particlecloud
       Unreliable: false
       Value: true
+    # 红2AMCL粒子
+    - Alpha: 1
+      Arrow Length: 0.05000000074505806
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 0; 180; 0
+      Enabled: false
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Amcl Particles [Red2]
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /robot_red2/particlecloud
+      Unreliable: false
+      Value: true
+    # 蓝1AMCL粒子
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -469,6 +887,24 @@ Visualization Manager:
       Topic: /robot_blue/particlecloud
       Unreliable: false
       Value: true
+    # 蓝2AMCL粒子
+    - Alpha: 1
+      Arrow Length: 0.05000000074505806
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 180; 0; 0
+      Enabled: false
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Amcl Particles [Blue2]
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /robot_blue2/particlecloud
+      Unreliable: false
+      Value: true
+    # 红1导航目标
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -484,6 +920,23 @@ Visualization Manager:
       Topic: /robot_red/move_base_simple/goal
       Unreliable: false
       Value: true
+    # 红2导航目标
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 100; 0
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: Goal [Red2]
+      Shaft Length: 0.5
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /robot_red2/move_base_simple/goal
+      Unreliable: false
+      Value: true
+    # 蓝1导航目标
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -499,6 +952,22 @@ Visualization Manager:
       Topic: /robot_blue/move_base_simple/goal
       Unreliable: false
       Value: true
+    # 蓝2导航目标
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 0; 100; 255
+      Enabled: true
+      Head Length: 0.30000001192092896
+      Head Radius: 0.10000000149011612
+      Name: Goal [Blue2]
+      Shaft Length: 0.5
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /robot_blue2/move_base_simple/goal
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -511,20 +980,42 @@ Visualization Manager:
     - Class: rviz/Interact
       Hide Inactive Objects: true
     - Class: rviz/Select
+    # 红1初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_red/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
+    # 红1导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_red/move_base_simple/goal
+    # 红2初始位姿工具
+    - Class: rviz/SetInitialPose
+      Theta std deviation: 0.2617993950843811
+      Topic: /robot_red2/initialpose
+      X std deviation: 0.5
+      Y std deviation: 0.5
+    # 红2导航目标工具
+    - Class: rviz/SetGoal
+      Topic: /robot_red2/move_base_simple/goal
+    # 蓝1初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_blue/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
+    # 蓝1导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_blue/move_base_simple/goal
+    # 蓝2初始位姿工具
+    - Class: rviz/SetInitialPose
+      Theta std deviation: 0.2617993950843811
+      Topic: /robot_blue2/initialpose
+      X std deviation: 0.5
+      Y std deviation: 0.5
+    # 蓝2导航目标工具
+    - Class: rviz/SetGoal
+      Topic: /robot_blue2/move_base_simple/goal
     - Class: rviz/Measure
   Value: true
   Views:

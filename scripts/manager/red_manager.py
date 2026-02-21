@@ -9,32 +9,37 @@ class RedTeamManager:
     def __init__(self):
         # 初始化节点，指定命名空间
         rospy.init_node("red_team_manager")
-        self.ns = "robot_red"  # 红方命名空间
+        # 红方两台机器人的命名空间列表
+        self.robot_ns_list = ["robot_red", "robot_red2"]  
         
-        # 初始化三大模块（可扩展：新增模块只需加初始化）
-        self.perception = Perception(self.ns)  # 感知
-        self.decision = DecisionEngine(self.ns)# 决策
-        self.executor = Executor(self.ns)      # 执行
+        # 为每台机器人初始化 感知/决策/执行 模块
+        self.perception_dict = {}
+        self.decision_dict = {}
+        self.executor_dict = {}
+        for ns in self.robot_ns_list:
+            self.perception_dict[ns] = Perception(ns)
+            self.decision_dict[ns] = DecisionEngine(ns)
+            self.executor_dict[ns] = Executor(ns)
 
         self.rate = rospy.Rate(10)  # 决策频率
         rospy.loginfo("红方TeamManager启动完成")
 
     def run(self):
-        """主循环：感知→决策→执行"""
+        """主循环：为每台机器人独立执行 感知→决策→执行"""
         while not rospy.is_shutdown():
-            # 1. 感知：获取小车的位置/图像数据
-            pose = self.perception.get_current_pose()
+            for ns in self.robot_ns_list:
+                # 1. 感知：获取当前机器人的位置/图像数据
+                pose = self.perception_dict[ns].get_current_pose()
+                image = self.perception_dict[ns].get_current_image()
 
-            image = self.perception.get_current_image()
+                # 2. 决策：根据感知数据生成指令（可扩展为多机协同决策）
+                nav_goal, robot_cmd = self.decision_dict[ns].make_decision(pose, image)
 
-            # 2. 决策：根据感知数据生成指令
-            nav_goal, robot_cmd = self.decision.make_decision(pose, image)
-
-            # 3. 执行：发布指令给小车
-            if nav_goal:
-                self.executor.publish_nav_goal(nav_goal)
-            if robot_cmd:
-                self.executor.publish_robot_command(robot_cmd)
+                # 3. 执行：发布指令给当前机器人
+                if nav_goal:
+                    self.executor_dict[ns].publish_nav_goal(nav_goal)
+                if robot_cmd:
+                    self.executor_dict[ns].publish_robot_command(robot_cmd)
 
             self.rate.sleep()
 
