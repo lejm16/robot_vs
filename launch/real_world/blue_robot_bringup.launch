@@ -1,0 +1,47 @@
+<launch>
+  <!-- ########## 核心配置（先改这里！）########## -->
+  <arg name="robot_namespace" default="robot_blue" doc="蓝车命名空间"/>
+  <arg name="urdf_path" default="$(find robot_vs)/config/urdf/your_real_robot.urdf.xacro" doc="蓝车的URDF模型"/>
+  <arg name="initial_pose_x" default="5.0" doc="【必须适配】蓝车在场地里的实际初始X坐标"/>
+  <arg name="initial_pose_y" default="0.0" doc="【必须适配】蓝车在场地里的实际初始Y坐标"/>
+  <arg name="initial_pose_a" default="3.14" doc="【必须适配】蓝车在场地里的实际初始朝向（弧度）"/>
+
+  <!-- 全局配置：真机关闭仿真时间 -->
+  <param name="use_sim_time" value="false"/>
+
+  <!-- ============================================== -->
+  <!-- ########## 1. 蓝车硬件驱动模块（必须适配你的小车！）########## -->
+  <!-- ============================================== -->
+
+  <!-- ============================================== -->
+  <!-- 2. 机器人URDF与TF发布 -->
+  <!-- ============================================== -->
+  <group ns="$(arg robot_namespace)">
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg urdf_path)" />
+    
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="20.0"/>
+      <param name="tf_prefix" value="$(arg robot_namespace)"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+  </group>
+
+  <!-- ============================================== -->
+  <!-- 3. AMCL定位节点 -->
+  <!-- ============================================== -->
+  <include file="$(find robot_vs)/launch/amcl.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)" />
+      <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+      <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+      <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  <!-- ============================================== -->
+  <!-- 4. move_base导航节点 -->
+  <!-- ============================================== -->
+  <include file="$(find robot_vs)/launch/move_base.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)" />
+  </include>
+
+  <rospy.loginfo> 蓝方小车启动完成，命名空间：$(arg robot_namespace)</rospy.loginfo>
+</launch>

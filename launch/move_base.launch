@@ -14,12 +14,12 @@
       <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
 
       <!-- 加载参数文件 -->
-      <rosparam file="$(find turtlebot3_navigation)/param/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
-      <rosparam file="$(find turtlebot3_navigation)/param/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />
-      <rosparam file="$(find turtlebot3_navigation)/param/local_costmap_params.yaml" command="load" />
-      <rosparam file="$(find turtlebot3_navigation)/param/global_costmap_params.yaml" command="load" />
-      <rosparam file="$(find turtlebot3_navigation)/param/move_base_params.yaml" command="load" />
-      <rosparam file="$(find turtlebot3_navigation)/param/dwa_local_planner_params_$(arg model).yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/move_base_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/dwa_local_planner_params_$(arg model).yaml" command="load" />
 
       <!-- 关键：坐标系配置 -->
       <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/> <!-- map -->
