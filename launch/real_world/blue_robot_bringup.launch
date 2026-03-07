@@ -1,7 +1,7 @@
 <launch>
   <!-- ########## 核心配置（先改这里！）########## -->
   <arg name="robot_namespace" default="robot_blue" doc="蓝车命名空间"/>
-  <arg name="urdf_path" default="$(find robot_vs)/config/urdf/your_real_robot.urdf.xacro" doc="蓝车的URDF模型"/>
+  <!-- <arg name="urdf_path" default="$(find robot_vs)/config/urdf/your_real_robot.urdf.xacro" doc="蓝车的URDF模型"/> -->
   <arg name="initial_pose_x" default="5.0" doc="【必须适配】蓝车在场地里的实际初始X坐标"/>
   <arg name="initial_pose_y" default="0.0" doc="【必须适配】蓝车在场地里的实际初始Y坐标"/>
   <arg name="initial_pose_a" default="3.14" doc="【必须适配】蓝车在场地里的实际初始朝向（弧度）"/>
@@ -12,18 +12,38 @@
   <!-- ============================================== -->
   <!-- ########## 1. 蓝车硬件驱动模块（必须适配你的小车！）########## -->
   <!-- ============================================== -->
+  <!-- <node pkg="car_bringup" type="newt.py" name="newt"/> -->
 
   <!-- ============================================== -->
-  <!-- 2. 机器人URDF与TF发布 -->
+  <!-- 2. 机器人发布 -->
   <!-- ============================================== -->
   <group ns="$(arg robot_namespace)">
-    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg urdf_path)" />
-    
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
-      <param name="publish_frequency" type="double" value="20.0"/>
-      <param name="tf_prefix" value="$(arg robot_namespace)"/>
+    <!-- 加载雷达 -->
+    <include file="$(find lslidar_driver)/launch/lslidar_serial.launch" />
+      <!-- 加载机器人模型-->
+    <include file="$(find mowen)/launch/display.launch" />
+    <include  file="$(find wit_ros_imu)/launch/wit_imu.launch" />
+    <node pkg="car_bringup" name="pubv" type="pubv.py"  />
+     <node pkg="car_bringup" type="base_node" name="odometry_publisher">
+        <param name="odom_frame" type="string" value="odom"/>
+        <param name="base_footprint_frame" type="string" value="base_footprint"/>
+        <param name="linear_scale_x" type="double" value="1.0"/>
+        <param name="linear_scale_y" type="double" value="1.0"/>
+        <remap from="/sub_vel" to="/vel_raw"/>
+        <remap from="/pub_odom" to="/odom_raw"/>
     </node>
-    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+
+    <!-- 扩展卡尔曼数据融合 -->
+    <!-- Extended Kalman data fusion -->
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization" output="screen">
+        <remap from="odometry/filtered" to="odom"/>
+        <remap from="/imu0" to="/wit/imu"/>
+        <remap from="/odom0" to="odom_raw"/>
+        <param name="odom_frame" value="/odom"/>
+        <param name="world_frame" value="/odom"/>
+        <param name="base_link_frame" value="/base_footprint"/>
+        <rosparam command="load" file="$(find car_bringup)/param/robot_localization.yaml"/>
+    </node>
   </group>
 
   <!-- ============================================== -->
