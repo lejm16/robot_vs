@@ -20,17 +20,22 @@
       <remap from="/cmd_vel" to="cmd_vel"/>
     </node>
     <!-- 加载雷达 -->
-    <include file="$(find lslidar_driver)/launch/lslidar_serial.launch" />
-    <!-- 加载机器人模型-->
-    <!-- <include file="$(find mowen)/launch/display.launch" /> -->
-<!-- 加载你真机的URDF模型 -->
-
-    <include file="$(find robot_vs)/launch/description/display.launch">
+    <include file="$(find robot_vs)/launch/description/lslidar_serial.launch" >
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
     </include>
+    <!-- 加载机器人模型-->
+
+    <!-- <include file="$(find robot_vs)/launch/description/display.launch">
+      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
+    </include> -->
+    <param name="robot_description" textfile="$(find robot_vs)/config/mowen_param/mowen.urdf" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
+      <param name="publish_frequency" type="double" value="50.0"/>
+      <param name="tf_prefix" value="robot_blue"/>
+    </node>
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
+
     
-    <!-- <include  file="$(find wit_ros_imu)/launch/wit_imu.launch" > -->
-    <!-- imu 对应 python 文件 -->
     <node pkg="wit_ros_imu" type="wit_$(arg type)_ros.py" name="imu" output="screen">
         <param name="port"               type = "str"    value="/dev/imu"/>
         <param name="baud"               type = "int"    value="9600"/>
@@ -43,8 +48,8 @@
     </node>
     
     <node pkg="car_bringup" type="base_node" name="odometry_publisher">
-        <param name="odom_frame" type="string" value="odom"/>
-        <param name="base_footprint_frame" type="string" value="base_footprint"/>
+        <param name="odom_frame" type="string" value="$(arg robot_namespace)/odom"/>
+        <param name="base_footprint_frame" type="string" value="$(arg robot_namespace)/base_footprint"/>
         <param name="linear_scale_x" type="double" value="1.0"/>
         <param name="linear_scale_y" type="double" value="1.0"/>
         <remap from="/sub_vel" to="vel_raw"/>
@@ -57,9 +62,9 @@
         <remap from="odometry/filtered" to="odom"/>
         <remap from="/imu0" to="wit/imu"/>
         <remap from="/odom0" to="odom_raw"/>
-        <param name="odom_frame" value="/odom"/>
-        <param name="world_frame" value="/odom"/>
-        <param name="base_link_frame" value="/base_footprint"/>
+        <param name="odom_frame" value="$(arg robot_namespace)/odom"/>
+        <param name="world_frame" value="$(arg robot_namespace)/odom"/>
+        <param name="base_link_frame" value="$(arg robot_namespace)/base_footprint"/>
         <rosparam command="load" file="$(find car_bringup)/param/robot_localization.yaml"/>
     </node>
   </group>
