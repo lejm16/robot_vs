@@ -1,0 +1,46 @@
+<launch>
+  <arg name="model" default="$(env TURTLEBOT3_MODEL)"/>
+  <arg name="robot_namespace" default=""/>
+  <arg name="laser_topic" default="scan" />
+  <arg name="odom_topic" default="odom" />
+  <arg name="cmd_topic" default="cmd_vel" />
+  <arg name="global_frame_id" default="map"/>
+  <arg name="odom_frame_id"   value="$(arg robot_namespace)/odom"/> <!-- 动态生成 -->
+  <arg name="base_frame_id"   value="$(arg robot_namespace)/base_footprint"/> <!-- 动态生成 -->
+
+  <group ns="$(arg robot_namespace)">
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+      <!-- DWA is better!!!!! -->
+      <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+
+      <!-- 加载xuni参数文件 -->
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/move_base_params.yaml" command="load" />
+      <rosparam file="$(find robot_vs)/config/turtlebot_param/dwa_local_planner_params_$(arg model).yaml" command="load" />
+
+      <!-- 关键：坐标系配置 -->
+      <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/> <!-- map -->
+      <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/> <!-- robot_red/base_footprint -->
+      <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/> <!-- robot_red/odom -->
+      <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/> <!-- robot_red/base_footprint -->
+
+      <!-- 雷达传感器frame（TurtleBot3的雷达link是base_scan） -->
+      <!-- <param name="global_costmap/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/>
+      <param name="global_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/>
+      <param name="local_costmap/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/>
+      <param name="local_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/>
+      <param name="global_costmap/obstacle_layer/scan/topic" value="$(arg laser_topic)"/>
+      <param name="local_costmap/obstacle_layer/scan/topic" value="$(arg laser_topic)"/> -->
+
+      <!-- 话题重映射 -->
+      <remap from="cmd_vel" to="$(arg cmd_topic)"/>
+      <remap from="odom" to="$(arg odom_topic)"/>
+      <remap from="scan" to="$(arg laser_topic)"/>
+      <remap from="map" to="/map"/>
+
+    </node>
+  </group>
+</launch>

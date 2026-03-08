@@ -24,29 +24,26 @@
       <arg name="robot_namespace" value="$(arg robot_namespace)"/>
     </include>
     <!-- 加载机器人模型-->
-
-    <!-- <include file="$(find robot_vs)/launch/description/display.launch">
-      <arg name="robot_namespace" value="$(arg robot_namespace)"/>
-    </include> -->
-    <param name="robot_description" textfile="$(find robot_vs)/config/mowen_param/mowen.urdf" />
+    <!-- <param name="robot_description" textfile="$(find robot_vs)/config/mowen_param/mowen.urdf" /> -->
+    <param name="$(arg robot_namespace)/robot_description"
+         command="$(find xacro)/xacro --inorder $(find robot_vs)/config/mowen_param/mowen.urdf.xacro ns:=$(arg robot_namespace)"/>
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
       <param name="publish_frequency" type="double" value="50.0"/>
       <param name="tf_prefix" value="robot_blue"/>
     </node>
     <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
-
-    
-    <node pkg="wit_ros_imu" type="wit_$(arg type)_ros.py" name="imu" output="screen">
+    <!--Unknown!!!!-->
+    <node pkg="robot_vs" type="wit_$(arg type)_ros.py" name="imu" output="screen">
         <param name="port"               type = "str"    value="/dev/imu"/>
         <param name="baud"               type = "int"    value="9600"/>
-
         <remap from="/wit/cali" to="wit/cali"/>
+        <!-- 如果IMU节点还发布/wit/imu，确保也是相对话题 -->
+        <remap from="wit/imu" to="wit/imu"/>
     </node>
     
     <node pkg="car_bringup" name="pubv" type="pubv.py"  >
       <remap from="/vel_raw" to="vel_raw"/>
     </node>
-    
     <node pkg="car_bringup" type="base_node" name="odometry_publisher">
         <param name="odom_frame" type="string" value="$(arg robot_namespace)/odom"/>
         <param name="base_footprint_frame" type="string" value="$(arg robot_namespace)/base_footprint"/>

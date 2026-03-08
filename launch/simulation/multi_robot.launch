@@ -36,7 +36,7 @@
   </group>
 
   <!-- 4.4 启动红方AMCL -->
-  <include file="$(find robot_vs)/launch/amcl.launch">
+  <include file="$(find robot_vs)/launch/simulation/amcl.launch">
     <arg name="robot_namespace" value="robot_red" />
     <arg name="initial_pose_x" value="-2.0"/>
     <arg name="initial_pose_y" value="0.0"/>
@@ -44,7 +44,7 @@
   </include>
 
   <!-- 4.5 启动红方move_base -->
-  <include file="$(find robot_vs)/launch/move_base.launch">
+  <include file="$(find robot_vs)/launch/simulation/move_base.launch">
     <arg name="robot_namespace" value="robot_red" />
   </include>
 
@@ -68,7 +68,7 @@
   </group>
 
   <!-- 5.4 启动蓝方AMCL -->
-  <include file="$(find robot_vs)/launch/amcl.launch">
+  <include file="$(find robot_vs)/launch/simulation/amcl.launch">
     <arg name="robot_namespace" value="robot_blue" />
     <arg name="initial_pose_x" value="2.0"/>
     <arg name="initial_pose_y" value="0.0"/>
@@ -76,7 +76,7 @@
   </include>
 
   <!-- 5.5 启动蓝方move_base -->
-  <include file="$(find robot_vs)/launch/move_base.launch">
+  <include file="$(find robot_vs)/launch/simulation/move_base.launch">
     <arg name="robot_namespace" value="robot_blue" />
   </include>
 

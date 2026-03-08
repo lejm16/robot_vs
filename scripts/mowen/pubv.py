@@ -9,10 +9,16 @@ from threading import Thread
 from nav_msgs.msg import Odometry
 import time
 from geometry_msgs.msg import Twist
-rospy.init_node('vel_raw_pub')
-velPublisher = rospy.Publisher("/vel_raw", Twist, queue_size=100)
+# rospy.init_node('vel_raw_pub')
+# velPublisher = rospy.Publisher("/vel_raw", Twist, queue_size=100)
 # 打开串口
 if __name__ == '__main__':
+    # 修改1：节点名改成相对的，或者用参数获取
+    rospy.init_node('vel_raw_pub')
+    
+    # 修改2：把绝对话题"/vel_raw"改成相对话题"vel_raw"，自动加命名空间
+    velPublisher = rospy.Publisher("/vel_raw", Twist, queue_size=100)
+
     print('serial')
     ser = serial.Serial("/dev/carserial",115200,timeout = 5)
     if ser.is_open:

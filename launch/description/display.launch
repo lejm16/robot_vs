@@ -19,11 +19,11 @@
     <param name="tf_prefix" value="$(arg robot_namespace)"/>
   </node>
 
-  <!-- <node 
+  <node 
   pkg="joint_state_publisher" 
   type="joint_state_publisher" 
   name="joint_state_publisher" 
-  output="screen"/> -->
+  output="screen"/>
   <!--
   <node
     name="rviz"
