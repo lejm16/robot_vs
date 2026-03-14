@@ -5,37 +5,37 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel [Red]1
-        - /RobotModel [Red2]1
+        - /RobotModel [Red]1/Status1
         - /RobotModel [Blue]1
-        - /RobotModel [Blue2]1
-        - /LaserScan [Red]1
-        - /LaserScan [Red2]1
-        - /LaserScan [Blue]1
-        - /LaserScan [Blue2]1
-        - /Map1
+        - /RobotModel [Blue]1/Status1
+        - /LaserScan [Blue]1/Status1
         - /Global Map [Red]1/Costmap1
         - /Global Map [Red]1/Planner1
-        - /Global Map [Red2]1/Costmap1
-        - /Global Map [Red2]1/Planner1
         - /Local Map [Red]1/Costmap1
         - /Local Map [Red]1/Planner1
+        - /Global Map [Red2]1/Costmap1
+        - /Global Map [Red2]1/Planner1
         - /Local Map [Red2]1/Costmap1
         - /Local Map [Red2]1/Planner1
         - /Global Map [Blue]1/Costmap1
         - /Global Map [Blue]1/Planner1
-        - /Global Map [Blue2]1/Costmap1
-        - /Global Map [Blue2]1/Planner1
         - /Local Map [Blue]1/Costmap1
         - /Local Map [Blue]1/Planner1
+        - /Global Map [Blue2]1/Costmap1
+        - /Global Map [Blue2]1/Planner1
         - /Local Map [Blue2]1/Costmap1
         - /Local Map [Blue2]1/Planner1
+        - /Amcl Particles [Blue]1
+        - /Amcl Particles [Blue]1/Status1
         - /Goal [Red]1
         - /Goal [Red2]1
         - /Goal [Blue]1
         - /Goal [Blue2]1
+        - /Imu1
+        - /Imu1/Status1
+        - /Odometry1
       Splitter Ratio: 0.5
-    Tree Height: 757
+    Tree Height: 565
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -51,7 +51,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan [Red]
+    SyncSource: LaserScan [Blue]
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -77,7 +77,6 @@ Visualization Manager:
       Plane Cell Count: 20
       Reference Frame: <Fixed Frame>
       Value: true
-    # 红1机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -88,46 +87,12 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        base_scan:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        caster_back_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        imu_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        wheel_left_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        wheel_right_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel [Red]
       Robot Description: /robot_red/robot_description
       TF Prefix: robot_red
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    # 红2机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -138,96 +103,37 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        base_scan:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        caster_back_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        imu_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        wheel_left_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        wheel_right_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel [Red2]
       Robot Description: /robot_red2/robot_description
       TF Prefix: robot_red2
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    # 蓝1机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
       Links:
-        All Links Enabled: true
+        All Links Enabled:
+          {}
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_footprint:
+        robot_blue/base_footprint:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        base_link:
+        robot_blue/base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-          Value: true
-        base_scan:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        caster_back_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        imu_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        wheel_left_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        wheel_right_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel [Blue]
       Robot Description: /robot_blue/robot_description
       TF Prefix: robot_blue
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    # 蓝2机器人模型
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -238,46 +144,12 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        base_footprint:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        base_scan:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        caster_back_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        imu_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        wheel_left_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        wheel_right_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
       Name: RobotModel [Blue2]
       Robot Description: /robot_blue2/robot_description
       TF Prefix: robot_blue2
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    # 红1激光雷达
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -306,7 +178,6 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    # 红2激光雷达（浅绿区分）
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -335,7 +206,6 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    # 蓝1激光雷达
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -364,7 +234,6 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    # 蓝2激光雷达（深红区分）
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -393,7 +262,6 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    # 全局地图
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
@@ -404,7 +272,6 @@ Visualization Manager:
       Unreliable: false
       Use Timestamp: false
       Value: true
-    # 红1全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -428,7 +295,6 @@ Visualization Manager:
       Topic: /robot_red/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
-    # 红2全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -452,7 +318,6 @@ Visualization Manager:
       Topic: /robot_red2/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
-    # 蓝1全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -476,7 +341,6 @@ Visualization Manager:
       Topic: /robot_blue/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
-    # 蓝2全局规划路径
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -500,7 +364,6 @@ Visualization Manager:
       Topic: /robot_blue2/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
-    # 红1全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -538,7 +401,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Red]
-    # 红1局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -584,7 +446,6 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Red]
-    # 红2全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -622,7 +483,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Red2]
-    # 红2局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -668,7 +528,6 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Red2]
-    # 蓝1全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -706,7 +565,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Blue]
-    # 蓝1局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -752,7 +610,6 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Blue]
-    # 蓝2全局代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -790,7 +647,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Global Map [Blue2]
-    # 蓝2局部代价地图分组
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -836,7 +692,6 @@ Visualization Manager:
           Value: true
       Enabled: false
       Name: Local Map [Blue2]
-    # 红1AMCL粒子
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -852,8 +707,7 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /robot_red/particlecloud
       Unreliable: false
-      Value: true
-    # 红2AMCL粒子
+      Value: false
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -869,15 +723,14 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /robot_red2/particlecloud
       Unreliable: false
-      Value: true
-    # 蓝1AMCL粒子
+      Value: false
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
       Axes Radius: 0.009999999776482582
       Class: rviz/PoseArray
       Color: 255; 0; 0
-      Enabled: false
+      Enabled: true
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: Amcl Particles [Blue]
@@ -887,7 +740,6 @@ Visualization Manager:
       Topic: /robot_blue/particlecloud
       Unreliable: false
       Value: true
-    # 蓝2AMCL粒子
     - Alpha: 1
       Arrow Length: 0.05000000074505806
       Axes Length: 0.30000001192092896
@@ -903,8 +755,7 @@ Visualization Manager:
       Shape: Arrow (Flat)
       Topic: /robot_blue2/particlecloud
       Unreliable: false
-      Value: true
-    # 红1导航目标
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -920,7 +771,6 @@ Visualization Manager:
       Topic: /robot_red/move_base_simple/goal
       Unreliable: false
       Value: true
-    # 红2导航目标
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -936,7 +786,6 @@ Visualization Manager:
       Topic: /robot_red2/move_base_simple/goal
       Unreliable: false
       Value: true
-    # 蓝1导航目标
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -952,7 +801,6 @@ Visualization Manager:
       Topic: /robot_blue/move_base_simple/goal
       Unreliable: false
       Value: true
-    # 蓝2导航目标
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -968,6 +816,49 @@ Visualization Manager:
       Topic: /robot_blue2/move_base_simple/goal
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: rviz_plugin_tutorials/Imu
+      Color: 204; 51; 204
+      Enabled: true
+      History Length: 1
+      Name: Imu
+      Topic: /robot_blue/wit/imu
+      Unreliable: false
+      Value: true
+    - Angle Tolerance: 0.10000000149011612
+      Class: rviz/Odometry
+      Covariance:
+        Orientation:
+          Alpha: 0.5
+          Color: 255; 255; 127
+          Color Style: Unique
+          Frame: Local
+          Offset: 1
+          Scale: 1
+          Value: true
+        Position:
+          Alpha: 0.30000001192092896
+          Color: 204; 51; 204
+          Scale: 1
+          Value: true
+        Value: true
+      Enabled: true
+      Keep: 100
+      Name: Odometry
+      Position Tolerance: 0.10000000149011612
+      Shape:
+        Alpha: 1
+        Axes Length: 1
+        Axes Radius: 0.10000000149011612
+        Color: 255; 25; 0
+        Head Length: 0.30000001192092896
+        Head Radius: 0.10000000149011612
+        Shaft Length: 1
+        Shaft Radius: 0.05000000074505806
+        Value: Arrow
+      Topic: /robot_blue/odom
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -980,47 +871,39 @@ Visualization Manager:
     - Class: rviz/Interact
       Hide Inactive Objects: true
     - Class: rviz/Select
-    # 红1初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_red/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
-    # 红1导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_red/move_base_simple/goal
-    # 红2初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_red2/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
-    # 红2导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_red2/move_base_simple/goal
-    # 蓝1初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_blue/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
-    # 蓝1导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_blue/move_base_simple/goal
-    # 蓝2初始位姿工具
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_blue2/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
-    # 蓝2导航目标工具
     - Class: rviz/SetGoal
       Topic: /robot_blue2/move_base_simple/goal
     - Class: rviz/Measure
   Value: true
   Views:
     Current:
-      Angle: -1.5707963705062866
+      Angle: -1.5857963562011719
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1030,19 +913,19 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 100
+      Scale: 94.36322784423828
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 0
-      Y: 0
+      X: 2.919506311416626
+      Y: -0.9806866645812988
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1161
+  Height: 969
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f7000003edfc0200000007fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000003ed0000018200fffffffb0000000a0049006d0061006700650000000317000000cc0000000000000000fb0000000a0049006d0061006700650000000330000000ce0000000000000000000000010000010f000003a0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000043000003a00000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a0000008d800fffffffb0000000800540069006d0065010000000000000450000000000000000000000775000003ed00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001f70000032dfc0200000007fb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000b0fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e0000032d0000018200fffffffb0000000a0049006d0061006700650000000317000000cc0000000000000000fb0000000a0049006d0061006700650000000330000000ce0000000000000000000000010000010f000003a0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000043000003a00000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a0000008d800fffffffb0000000800540069006d00650100000000000004500000000000000000000004f70000032d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -1051,6 +934,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 2424
+  Width: 1786
   X: 134
   Y: 55

@@ -8,7 +8,7 @@
         args="$(arg map_file)" />
 
   <!-- 3. 可选：启动RViz（真机调试用，不用可以关） -->
-  <!-- <node name="rviz" pkg="rviz" type="rviz" output="screen"
+  <node name="rviz" pkg="rviz" type="rviz" output="screen"
         args="-d $(find robot_vs)/rviz/multi_robot.rviz"
-        if="$(arg open_rviz)"/> -->
+        if="$(arg open_rviz)"/>
 </launch>
