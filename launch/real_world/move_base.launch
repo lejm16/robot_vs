@@ -1,6 +1,6 @@
 <launch>
   <arg name="robot_namespace" default=""/>
-  <arg name="laser_topic" value="$(arg robot_namespace)/scan" />
+  <arg name="laser_topic" value="scan" /><!--ALREADY HAS NAMESPACE OUTSIDE!-->
   <arg name="odom_topic" default="odom" />
   <arg name="cmd_topic" default="cmd_vel" />
   <arg name="global_frame_id" default="map"/>
@@ -31,9 +31,9 @@
 
       <!-- 雷达传感器frame -->
       <param name="global_costmap/scan/sensor_frame" value="$(arg robot_namespace)/laser_link"/>
-      <!-- <param name="global_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/> -->
+      <param name="global_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/laser_link"/>
       <param name="local_costmap/scan/sensor_frame" value="$(arg robot_namespace)/laser_link"/>
-      <!-- <param name="local_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/base_scan"/> -->
+      <param name="local_costmap/obstacle_layer/scan/sensor_frame" value="$(arg robot_namespace)/laser_link"/>
       <param name="global_costmap/obstacle_layer/scan/topic" value="$(arg laser_topic)"/>
       <param name="local_costmap/obstacle_layer/scan/topic" value="$(arg laser_topic)"/>
 
