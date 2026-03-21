@@ -22,7 +22,7 @@
     <!-- <param name="robot_description"         command="$(find xacro)/xacro   $(find robot_vs)/config/mowen_param/mowen.urdf.xacro ns:=$(arg robot_namespace)"/> -->
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" output="screen">
       <param name="publish_frequency" type="double" value="50.0"/>
-      <param name="tf_prefix" value="robot_blue"/>
+      <param name="tf_prefix" value="$(arg robot_namespace)"/>
     </node>
     <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
     <!--Unknown!!!!-->
