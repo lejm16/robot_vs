@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import rospy
+from robot_vs.msg import TaskCommand
+
+
+class TaskDispatcher(object):
+	"""Publish team tasks to /<ns>/task_cmd topics."""
+
+	def __init__(self, my_cars=None, default_timeout=2.0):
+		if my_cars is None:
+			my_cars = rospy.get_param("~my_cars", [])
+
+		self.my_cars = list(my_cars)
+		self.default_timeout = float(default_timeout)
+		self._publishers = {}
+		self._task_seq = 0
+
+		for ns in self.my_cars:
+			self._ensure_publisher(ns)
+
+	def _ensure_publisher(self, ns):
+		if ns in self._publishers:
+			return self._publishers[ns]
+
+		topic = "/{}/task_cmd".format(ns)
+		self._publishers[ns] = rospy.Publisher(topic, TaskCommand, queue_size=10)
+		rospy.loginfo("TaskDispatcher publisher created: %s", topic)
+		return self._publishers[ns]
+
+	def _normalize_tasks(self, tasks):
+		if tasks is None:
+			raise ValueError("tasks must not be None")
+
+		if isinstance(tasks, dict):
+			return tasks
+
+		# Compatibility with legacy list format:
+		# [{"car":"robot_x","type":"idle","reason":"..."}, ...]
+		if isinstance(tasks, list):
+			normalized = {}
+			for item in tasks:
+				if not isinstance(item, dict):
+					continue
+				ns = item.get("car")
+				if not ns:
+					continue
+				normalized[ns] = {
+					"action": str(item.get("type", "STOP")).upper(),
+					"target": {
+						"x": float(item.get("target_x", 0.0)),
+						"y": float(item.get("target_y", 0.0)),
+					},
+					"mode": int(item.get("mode", 0)),
+					"reason": item.get("reason", "legacy format"),
+					"timeout": float(item.get("timeout", self.default_timeout)),
+				}
+			return normalized
+
+		raise ValueError("tasks must be dict or list")
+
+	def _next_task_id(self):
+		self._task_seq += 1
+		return self._task_seq
+
+	def _safe_stop_task(self, reason):
+		return {
+			"action": "STOP",
+			"target": {"x": 0.0, "y": 0.0},
+			"mode": 0,
+			"reason": reason,
+			"timeout": self.default_timeout,
+		}
+
+	def _build_task_msg(self, task):
+		msg = TaskCommand()
+		msg.task_id = int(task.get("task_id", self._next_task_id()))
+		msg.action_type = str(task.get("action", "STOP"))
+
+		target = task.get("target", {})
+		if not isinstance(target, dict):
+			target = {}
+		msg.target_x = float(target.get("x", 0.0))
+		msg.target_y = float(target.get("y", 0.0))
+
+		msg.mode = int(task.get("mode", 0))
+		msg.reason = str(task.get("reason", ""))
+		msg.timeout = float(task.get("timeout", self.default_timeout))
+		return msg
+
+	def dispatch(self, tasks):
+		normalized = self._normalize_tasks(tasks)
+
+		if self.my_cars:
+			target_ns_list = list(self.my_cars)
+		else:
+			target_ns_list = sorted(normalized.keys())
+
+		for ns in target_ns_list:
+			try:
+				task = normalized.get(ns)
+				if task is None:
+					task = self._safe_stop_task("missing task for robot")
+
+				pub = self._ensure_publisher(ns)
+				msg = self._build_task_msg(task)
+				pub.publish(msg)
+
+				rospy.loginfo(
+					"dispatch ns=%s action=%s target=(%.2f, %.2f)",
+					ns,
+					msg.action_type,
+					msg.target_x,
+					msg.target_y,
+				)
+			except Exception as exc:
+				rospy.logwarn("dispatch failed for %s: %s", ns, exc)
