@@ -142,7 +142,7 @@ def main():
 	except Exception as exc:
 		rospy.logwarn("TeamManager param/init error: %s", exc)
 		# Keep node alive with conservative defaults when params are invalid.
-		manager = TeamManager(team_color="red", my_cars=[], loop_hz=1, state_timeout_s=2.0)
+		manager = TeamManager(team_color="red", my_cars=[], loop_hz=1, state_timeout_s=5.0)
 
 	manager.run()
 
