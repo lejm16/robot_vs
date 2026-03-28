@@ -6,7 +6,7 @@ from robot_vs.msg import TaskCommand
 
 
 class TaskDispatcher(object):
-	"""Publish team tasks to /<ns>/task_cmd topics."""
+	"""将团队任务发布到 /<ns>/task_cmd 话题。"""
 
 	def __init__(self, my_cars=None, default_timeout=2.0):
 		if my_cars is None:
@@ -18,6 +18,8 @@ class TaskDispatcher(object):
 		self.default_timeout = float(default_timeout)
 		self._publishers = {}
 		self._task_seq = 0
+		self._last_task_signature = {}
+		self._last_task_id = {}
 
 		for ns in self.my_cars:
 			self._ensure_publisher(ns)
@@ -38,7 +40,7 @@ class TaskDispatcher(object):
 		if isinstance(tasks, dict):
 			return tasks
 
-		# Compatibility with legacy list format:
+		# 兼容旧版 list 格式：
 		# [{"car":"robot_x","type":"idle","reason":"..."}, ...]
 		rospy.logwarn("tasks is a list, using legacy format normalization. Consider updating LLM output to dict format.")
 		if isinstance(tasks, list):
@@ -76,9 +78,37 @@ class TaskDispatcher(object):
 			"timeout": self.default_timeout,
 		}
 
-	def _build_task_msg(self, task):
+	def _task_signature(self, task):
+		action = str(task.get("action", "STOP"))
+		target = task.get("target", {})
+		if not isinstance(target, dict):
+			target = {}
+
+		target_x = float(target.get("x", 0.0))
+		target_y = float(target.get("y", 0.0))
+		mode = int(task.get("mode", 0))
+		timeout = float(task.get("timeout", self.default_timeout))
+
+		return (action, target_x, target_y, mode, timeout)
+
+	def _assign_task_id(self, ns, task):
+		signature = self._task_signature(task)
+		last_signature = self._last_task_signature.get(ns)
+
+		if last_signature == signature and ns in self._last_task_id:
+			return self._last_task_id[ns]
+
+		if "task_id" in task:
+			task_id = int(task.get("task_id"))
+		else:
+			task_id = self._next_task_id()
+		self._last_task_signature[ns] = signature
+		self._last_task_id[ns] = task_id
+		return task_id
+
+	def _build_task_msg(self, ns, task):
 		msg = TaskCommand()
-		msg.task_id = int(task.get("task_id", self._next_task_id()))
+		msg.task_id = int(self._assign_task_id(ns, task))
 		msg.action_type = str(task.get("action", "STOP"))
 
 		target = task.get("target", {})
@@ -107,7 +137,7 @@ class TaskDispatcher(object):
 					task = self._safe_stop_task("missing task for robot")
 
 				pub = self._ensure_publisher(ns)
-				msg = self._build_task_msg(task)
+				msg = self._build_task_msg(ns, task)
 				pub.publish(msg)
 
 				rospy.loginfo(

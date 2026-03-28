@@ -7,7 +7,7 @@ import os
 import rospy
 from robot_vs.msg import TaskCommand
 
-# Allow sibling-package imports (skill_manager, task_engine, skills/)
+# 允许导入同级包（skill_manager、task_engine、skills/）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from skill_manager import SkillManager
@@ -15,20 +15,19 @@ from task_engine import TaskEngine
 
 
 class CarAgent(object):
-    """Main entry point for a single car agent.
+    """单个小车智能体主入口。
 
-    Identity is determined solely by the ROS namespace it is launched
-    under (e.g. /robot_red_1), so one binary serves all cars on both
-    teams.
+    身份仅由启动时的 ROS 命名空间决定
+    （例如 /robot_red_1），因此同一份程序可服务双方全部小车。
 
-    Parameters (read from ROS param server):
-        ~loop_hz (float, default 10.0) – main loop frequency in Hz
+    参数（从 ROS 参数服务器读取）：
+        ~loop_hz (float, 默认 10.0) - 主循环频率（Hz）
     """
 
     def __init__(self, ns=None, loop_hz=None, skill_manager=None, task_engine=None):
-        # Resolve namespace: prefer explicit arg, then ROS namespace.
+        # 解析命名空间：优先使用显式参数，其次使用 ROS 命名空间。
         if ns is None:
-            ns = rospy.get_namespace().strip("/") # from ns(<group>),instedf of params.get("~ns", "car")
+            ns = rospy.get_namespace().strip("/")  # 命名空间来自 launch 的 <group ns=...> 配置。
         self.ns = str(ns) if ns else "car"
 
         if loop_hz is None:

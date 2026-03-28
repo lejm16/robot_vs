@@ -11,7 +11,7 @@ from skills.base_skill import BaseSkill, RUNNING, SUCCESS
 
 
 class AttackSkill(BaseSkill):
-    """Face the target and simulate attack delay before success."""
+    """朝向目标并模拟攻击延时，完成后返回成功。"""
 
     def __init__(self, skill_manager):
         super(AttackSkill, self).__init__(skill_manager)
@@ -24,7 +24,7 @@ class AttackSkill(BaseSkill):
         params = params or {}
         self.target_x = float(params.get("target_x", 0.0))
         self.target_y = float(params.get("target_y", 0.0))
-        self.attack_delay_s = float(params.get("attack_delay_s", 1.5))
+        self.attack_delay_s = float(params.get("attack_delay_s", 1.5))#delay default
         self.start_time = rospy.Time.now().to_sec()
         self._status = RUNNING
 
@@ -51,6 +51,10 @@ class AttackSkill(BaseSkill):
                 return self._status
 
         self.skill_manager.publish_stop_velocity()
+        rospy.loginfo(
+            "[%s] AttackSkill: aligned with target, (shooting) waiting for attack delay (%.2fs elapsed)",
+            self.skill_manager.ns, now - self.start_time,
+        )
 
         if self.start_time is None:
             self.start_time = now

@@ -8,15 +8,15 @@ from skills.base_skill import BaseSkill, RUNNING, SUCCESS, FAILED
 
 
 class GoToSkill(BaseSkill):
-    """Navigate to a (x, y) target using move_base_simple/goal.
+    """通过 move_base_simple/goal 导航到指定 (x, y) 目标。
 
-    Completes with SUCCESS when move_base reports SUCCEEDED (status == 3).
-    Completes with FAILED when move_base reports any failure status.
+    当 move_base 返回 SUCCEEDED（status == 3）时结束为 SUCCESS。
+    当 move_base 返回失败状态时结束为 FAILED。
     """
 
-    # move_base GoalStatus values
+    # move_base 的 GoalStatus 状态码
     _STATUS_SUCCEEDED = 3
-    _STATUS_FAILED = {4, 5, 8, 9}  # ABORTED, REJECTED, LOST, etc.
+    _STATUS_FAILED = {4, 5, 8, 9}  # ABORTED、REJECTED、LOST 等
 
     def __init__(self, skill_manager, frame_id="map"):
         super(GoToSkill, self).__init__(skill_manager)
@@ -63,5 +63,5 @@ class GoToSkill(BaseSkill):
         return self._status
 
     def stop(self):
-        # Cancel by publishing zero velocity; move_base will idle.
+        # 通过发布零速度进行取消；move_base 将进入空闲。
         self.skill_manager.publish_stop_velocity()

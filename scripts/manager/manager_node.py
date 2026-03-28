@@ -12,13 +12,13 @@ from task_dispatcher import TaskDispatcher
 
 
 class TeamManager(object):
-	"""ROS1 team manager main node.
+	"""ROS1 团队管理主节点。
 
-	Core loop:
-	  1) observe global state
-	  2) format planner input
-	  3) ask LLM planner for tasks
-	  4) dispatch tasks
+	核心循环：
+	  1) 观测全局状态
+	  2) 格式化规划输入
+	  3) 调用 LLM 规划器生成任务
+	  4) 分发任务
 	"""
 
 	def __init__(self, team_color="red", my_cars=None, loop_hz=0.2,
@@ -141,7 +141,7 @@ def main():
 		manager = TeamManager.from_ros_params()
 	except Exception as exc:
 		rospy.logwarn("TeamManager param/init error: %s", exc)
-		# Keep node alive with conservative defaults when params are invalid.
+		# 当参数非法时使用保守默认值，确保节点保持可运行。
 		manager = TeamManager(team_color="red", my_cars=[], loop_hz=1, state_timeout_s=5.0)
 
 	manager.run()

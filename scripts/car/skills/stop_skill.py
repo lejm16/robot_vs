@@ -7,12 +7,11 @@ from skills.base_skill import BaseSkill, SUCCESS
 
 
 class StopSkill(BaseSkill):
-    """Immediately stop the robot by publishing zero velocity.
+    """通过发布零速度立即停止机器人。
 
-    Returns SUCCESS after one tick to signal that the stop command has
-    been sent.  The task_engine will keep calling update() while the
-    task_engine's current task remains STOP, so the zero-velocity
-    command is re-published every tick.
+    在一个 tick 后返回 SUCCESS，表示停止指令已发送。
+    当 task_engine 的当前任务仍为 STOP 时，会持续调用 update()，
+    因此每个 tick 都会重复发布零速度指令。
     """
 
     def start(self, params=None):

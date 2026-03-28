@@ -11,14 +11,14 @@ from skill_manager import SkillManager
 
 
 class TaskEngine(object):
-    """Maintain current task and drive skill execution.
+    """维护当前任务并驱动技能执行。
 
-    Responsibilities:
-    1) Keep current task snapshot received from car_node.
-    2) Instantiate the appropriate skill via SkillManager on task change.
-    3) On every tick(), call the current skill's update() and handle
-       transitions (RUNNING → SUCCESS / FAILED).
-    4) Monitor task timeout and fail-safe to STOP.
+     职责：
+     1) 保存 car_node 下发的当前任务快照。
+     2) 任务切换时通过 SkillManager 创建并切换对应技能。
+     3) 每次 tick() 调用当前技能 update()，处理
+         RUNNING -> SUCCESS / FAILED 的状态转移。
+     4) 监控任务超时并执行 STOP 兜底。
     """
 
     def __init__(self, ns, skill_manager):
@@ -26,7 +26,7 @@ class TaskEngine(object):
         self.skill_manager = skill_manager
 
         self._lock = threading.RLock()
-        self._current_task = None   # latest task dict
+        self._current_task = None   # 最近一次任务字典
         self._task_status = "IDLE"  # IDLE / RUNNING / SUCCESS / FAILED
         self._current_action = "NONE"
         self._task_start_t = None
@@ -34,9 +34,13 @@ class TaskEngine(object):
         rospy.loginfo("[%s] TaskEngine initialised", self.ns)
 
     # ------------------------------------------------------------------
-    # Task receiver
+    # 任务接收
     # ------------------------------------------------------------------
 
+    '''
+    每当car_node接收到新的task时，都会调用accept_task()方法
+    启动新技能,然后把任务状态置为 RUNNING
+    '''
     def accept_task(self, msg):
         if not isinstance(msg, TaskCommand):
             raise ValueError("accept_task expects TaskCommand")
@@ -44,7 +48,7 @@ class TaskEngine(object):
         with self._lock:
             current = self._current_task
             if current is not None and int(current.get("task_id", 0)) == int(msg.task_id):
-                return  # same task, ignore duplicate
+                return  # 相同 task_id 视为重复任务，直接忽略
 
             rospy.loginfo(
                 "[%s] TaskEngine: new task task_id=%d action=%s target=(%.2f, %.2f)",
@@ -77,11 +81,17 @@ class TaskEngine(object):
             )
 
     # ------------------------------------------------------------------
-    # Main loop step
+    # 主循环步进
     # ------------------------------------------------------------------
 
+    '''
+    每个一个周期查看小车task的运行状态
+    1. 如果当前没有task，则发送IDLE状态反馈
+    2. 如果当前task正在运行，检查是否超时，如果超时则切换到STOP技能，并发送FAILED状态反馈
+    3. 否则调用当前技能的update()方法，并根据返回结果更新任务状态
+    '''
     def tick(self):
-        """Called every loop iteration from car_node."""
+        """由 car_node 在每次循环中调用。"""
         with self._lock:
             task = self._current_task
             task_status = self._task_status

@@ -3,7 +3,7 @@
 
 
 class BattleStateFormatter(object):
-    """Converts raw battle state to planner input."""
+    """将原始战场状态转换为规划器输入。"""
 
     def build(self, battle_state, team_color, my_cars):
         if battle_state is None:

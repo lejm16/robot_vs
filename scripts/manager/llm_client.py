@@ -7,9 +7,9 @@ import rospy
 
 
 class LLMClient(object):
-    """Rule-based planner (Mock LLM).
+    """基于规则的任务规划器（模拟 LLM）。
 
-    Output format:
+    输出格式：
     {
       "robot_red_1": {
         "action": "GOTO",
@@ -30,20 +30,20 @@ class LLMClient(object):
         ]
         self._flank_offset = float(flank_offset)
         self._patrol_hold_s = 3.0
-        # Per-robot patrol state for no-enemy behavior.
+        # 无敌人场景下的逐车巡逻状态。
         # {robot_id: {"idx": int, "hold_until": float, "last_success_task_id": int}}
         self._patrol_state = {}
 
     def plan_tasks(self, battle_state):
-        """Plan tasks from battle state using deterministic rules.
+        """根据战场状态按确定性规则规划任务。
 
-        Rules (test-friendly):
-        1) stale/missing robot state -> STOP
-        2) dead robot -> STOP
-        3) failed task -> retry patrol point
-        4) visible enemy + enough ammo -> ATTACK/GOTO
-        5) low hp or low ammo -> RETREAT (GOTO safe point, mode=3)
-        6) otherwise -> patrol
+        规则（便于测试）：
+        1) 机器人状态缺失或过期 -> STOP
+        2) 机器人死亡 -> STOP
+        3) 任务失败 -> 重试巡逻点
+        4) 发现可见敌人且弹药充足 -> ATTACK/GOTO
+        5) 血量低或弹药低 -> 撤退（GOTO 安全点，mode=3）
+        6) 其他情况 -> 巡逻
         """
         if self._planner_fn is not None:
             return self._planner_fn(battle_state)
@@ -88,7 +88,7 @@ class LLMClient(object):
                 timeout=4.0,
             )
 
-        # Low resources first: keep robot safe.
+        # 资源不足时优先保命。
         if hp < 20.0 or ammo <= 0.0:
             return self._build_task(
                 action="GOTO",
@@ -164,7 +164,7 @@ class LLMClient(object):
         current_task_id = int(self._to_float(self._read_value(state, "current_task_id", 0), 0))
         last_success_task_id = int(patrol_state.get("last_success_task_id", -1))
 
-        # When a GOTO task succeeds, enter a short hold phase before switching waypoint.
+        # GOTO 成功后先短暂停留，再切换到下一个巡逻点。
         if task_status == "SUCCESS" and current_action == "GOTO" and current_task_id != last_success_task_id:
             patrol_state["last_success_task_id"] = current_task_id
             patrol_state["hold_until"] = now + self._patrol_hold_s
@@ -199,7 +199,7 @@ class LLMClient(object):
         if isinstance(friendly, dict) and friendly:
             return sorted(friendly.keys()), friendly
 
-        # Compatible fallback for earlier input style {"my_cars": [...]}.
+        # 兼容旧输入格式 {"my_cars": [...]}。
         my_cars = battle_state.get("my_cars", [])
         if isinstance(my_cars, list) and my_cars:
             generated = {}
@@ -222,12 +222,12 @@ class LLMClient(object):
         if not isinstance(state, dict):
             return []
 
-        # Preferred shape: {"visible_enemies": [{"x":..,"y":..}, ...]}
+        # 推荐格式：{"visible_enemies": [{"x":..,"y":..}, ...]}
         visible = state.get("visible_enemies")
         if isinstance(visible, list) and visible:
             return [e for e in visible if isinstance(e, dict)]
 
-        # Compatible shape: {"enemies": [{"x":..,"y":..,"visible":true}, ...]}
+        # 兼容格式：{"enemies": [{"x":..,"y":..,"visible":true}, ...]}
         enemies = state.get("enemies")
         if isinstance(enemies, list):
             result = []
@@ -236,21 +236,21 @@ class LLMClient(object):
                     result.append(enemy)
             return result
 
-        # Minimal shape: state itself contains x/y and optional visible flag.
+        # 最小格式：state 本身包含 x/y，且 visible 可选。
         if "x" in state and "y" in state and state.get("visible", True):
             return [state]
 
         return []
 
     def _extract_context(self, planner_input):
-        # A) planner_input has top-level friendly/enemy
+        # A) planner_input 顶层直接包含 friendly/enemy
         if isinstance(planner_input.get("friendly"), dict) or isinstance(planner_input.get("enemy"), dict):
             return {
                 "friendly": planner_input.get("friendly", {}),
                 "enemy": planner_input.get("enemy", {}),
             }
 
-        # B) planner_input has battle_state with friendly/enemy inside
+        # B) planner_input 里包含 battle_state，且其内含 friendly/enemy
         nested = planner_input.get("battle_state", {})
         if isinstance(nested, dict):
             return {
@@ -353,11 +353,11 @@ class LLMClient(object):
         return {"x": 0.0, "y": 0.0}
 
     def _call_remote_llm(self, prompt):
-        """Reserved: call real remote LLM API and return raw text."""
+        """预留：调用真实远端 LLM API 并返回原始文本。"""
         raise NotImplementedError("Remote LLM API is not connected yet")
 
     def _parse_llm_json(self, text):
-        """Reserved: parse JSON text returned by remote LLM."""
+        """预留：解析远端 LLM 返回的 JSON 文本。"""
         data = json.loads(text)
         if not isinstance(data, dict):
             raise ValueError("LLM response must be a dict")

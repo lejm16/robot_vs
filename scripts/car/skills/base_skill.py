@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Skill status constants
+# 技能状态常量
 RUNNING = "RUNNING"
 SUCCESS = "SUCCESS"
 FAILED = "FAILED"
 
 
 class BaseSkill(object):
-    """Abstract base class for all car skills.
+    """所有小车技能的抽象基类。
 
-    Each skill represents a single atomic behaviour (e.g. GoTo, Stop).
-    Lifecycle:
-      1) start()  – called once when the skill becomes active
-      2) update() – called every tick; returns RUNNING / SUCCESS / FAILED
-      3) stop()   – called once when the skill is cancelled or completed
+        每个技能表示一个原子行为（如 GoTo、Stop）。
+        生命周期：
+            1) start()  - 技能激活时调用一次
+            2) update() - 每个 tick 调用一次，返回 RUNNING / SUCCESS / FAILED
+            3) stop()   - 技能取消或结束时调用一次
     """
 
     def __init__(self, skill_manager):
@@ -26,17 +26,17 @@ class BaseSkill(object):
         return self._status
 
     def start(self, params=None):
-        """Initialise the skill. Called once before the first update()."""
+        """初始化技能；在第一次 update() 前调用一次。"""
         pass
 
     def update(self):
-        """Execute one step of the skill logic.
+        """执行一步技能逻辑。
 
-        Returns:
-            str: RUNNING, SUCCESS, or FAILED
+        返回：
+            str: RUNNING、SUCCESS 或 FAILED
         """
         raise NotImplementedError("Subclasses must implement update()")
 
     def stop(self):
-        """Clean up when the skill is cancelled or has finished."""
+        """技能取消或结束时执行清理。"""
         pass

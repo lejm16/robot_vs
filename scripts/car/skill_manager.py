@@ -3,7 +3,7 @@
 
 import threading
 
-import actionlib  # Reserved for future action-client integration.
+import actionlib  # 预留给后续 action client 集成使用。
 import rospy
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
@@ -15,20 +15,20 @@ from skills.base_skill import RUNNING, FAILED
 
 
 class SkillManager(object):
-    """Manage ROS publishers and subscribers needed by car skills.
+    """管理小车技能所需的 ROS 发布器与订阅器。
 
-    Responsibilities:
-    - Publish navigation goals to /<ns>/move_base_simple/goal
-    - Publish velocity commands to /<ns>/cmd_vel
-    - Subscribe to /<ns>/move_base/result to track navigation outcome
-    - Provide factory methods to instantiate skill objects
+    职责：
+    - 向 /<ns>/move_base_simple/goal 发布导航目标
+    - 向 /<ns>/cmd_vel 发布速度指令
+    - 订阅 /<ns>/move_base/result 跟踪导航结果
+    - 提供技能对象的工厂创建方法
     """
 
     def __init__(self, ns):
         self.ns = str(ns)
         self._lock = threading.RLock()
 
-        self.nav_status_code = -1  # -1 = no result yet
+        self.nav_status_code = -1  # -1 表示尚未收到导航结果
         self._latest_pose = None
         self._latest_twist = Twist()
 
@@ -87,26 +87,26 @@ class SkillManager(object):
         rospy.loginfo("[%s] SkillManager initialised", self.ns)
 
     # ------------------------------------------------------------------
-    # Publisher helpers
+    # 发布器辅助方法
     # ------------------------------------------------------------------
 
     def publish_nav_goal(self, goal):
-        """Send a PoseStamped goal to move_base_simple."""
+        """向 move_base_simple 发布 PoseStamped 目标。"""
         self._goal_pub.publish(goal)
 
     def publish_stop_velocity(self):
-        """Publish zero Twist to stop the robot immediately."""
+        """发布零速度 Twist，使机器人立即停止。"""
         self._cmd_vel_pub.publish(Twist())
 
     def publish_cmd_vel(self, cmd_vel):
         self._cmd_vel_pub.publish(cmd_vel)
 
     # ------------------------------------------------------------------
-    # Navigation status
+    # 导航状态
     # ------------------------------------------------------------------
 
     def reset_nav_status(self):
-        """Clear the last navigation result before sending a new goal."""
+        """发送新目标前清空上一次导航结果。"""
         self.nav_status_code = -1
 
     def _nav_result_cb(self, msg):
@@ -123,20 +123,20 @@ class SkillManager(object):
             self._latest_pose = msg.pose.pose
 
     # ------------------------------------------------------------------
-    # Skill lifecycle and factory
+    # 技能生命周期与工厂
     # ------------------------------------------------------------------
 
     def make_skill(self, action_type, task):
-        """Instantiate the appropriate skill for *action_type*.
+        """根据 *action_type* 创建对应技能实例。
 
-        Args:
-            action_type (str): e.g. "GOTO", "STOP"
-            task (dict): full task dict from TaskDispatcher
+        参数：
+            action_type (str): 例如 "GOTO"、"STOP"
+            task (dict): 来自 TaskDispatcher 的完整任务字典
 
-        Returns:
-            BaseSkill subclass instance, or None if unknown action.
+        返回：
+            BaseSkill 子类实例；若动作未知则回退为 StopSkill。
         """
-        # Import here to avoid circular imports at module load time.
+        # 在此处导入以避免模块加载阶段出现循环依赖。
         from skills.goto_skill import GoToSkill
         from skills.stop_skill import StopSkill
         from skills.attack_skill import AttackSkill
@@ -200,7 +200,7 @@ class SkillManager(object):
             return self._latest_pose
 
     # ------------------------------------------------------------------
-    # RobotState publisher
+    # RobotState 发布
     # ------------------------------------------------------------------
 
     def _publish_robot_state(self, _event):

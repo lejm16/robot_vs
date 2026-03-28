@@ -8,13 +8,13 @@ from robot_vs.msg import RobotState
 
 
 class GlobalObserver(object):
-	"""Observe team robot states and referee enemy state.
+	"""观测己方机器人状态与裁判系统敌方状态。
 
-	Responsibilities:
-	1) subscribe /<ns>/robot_state (RobotState)
-	2) subscribe /referee/enemy_state (reserved interface)
-	3) cache latest state + receive timestamp
-	4) provide structured battle state with stale flags
+	职责：
+	1) 订阅 /<ns>/robot_state（RobotState）
+	2) 订阅 /referee/enemy_state（预留接口）
+	3) 缓存最新状态及接收时间戳
+	4) 对外提供带 stale 标记的结构化战场状态
 	"""
 
 	def __init__(self, my_cars, state_timeout=2.0,
@@ -28,9 +28,9 @@ class GlobalObserver(object):
 
 		self._lock = threading.RLock()
 
-		# dict[ns] = {"state": RobotState or None, "stamp": float or None}
+		# dict[ns] = {"state": RobotState 或 None, "stamp": float 或 None}
 		self.robot_states = {}
-		# dict with same shape as robot state cache
+		# 与 robot_states 相同结构的缓存
 		self.enemy_state = {"state": None, "stamp": None}
 
 		self._robot_subscribers = []
@@ -41,7 +41,7 @@ class GlobalObserver(object):
 			sub = rospy.Subscriber(topic, RobotState, self._robot_state_cb, callback_args=ns, queue_size=10)
 			self._robot_subscribers.append(sub)
 
-		# Enemy topic interface is intentionally generic for now.
+		# 敌方话题接口目前有意保持通用形态。
 		self._enemy_subscriber = rospy.Subscriber(
 			self.enemy_topic,
 			rospy.AnyMsg,
@@ -78,7 +78,7 @@ class GlobalObserver(object):
 		if msg is None:
 			return None
 
-		# rospy.AnyMsg has only raw bytes; keep a minimal structured view.
+		# rospy.AnyMsg 只有原始字节流；这里保留最小结构化视图。
 		if isinstance(msg, rospy.AnyMsg):
 			return {
 				"_type": "rospy.AnyMsg",
