@@ -49,15 +49,15 @@ class RedTeamManager:
                 continue
 
             # 1. 决策：直接读取共享状态做协同决策
-            # team_actions = self.decision_engine.make_team_decision()
+            team_actions = self.decision_engine.make_team_decision()
 
             # 2. 执行：按机器人分发指令
-            # for ns in self.robot_ns_list:
-            #     nav_goal, robot_cmd = team_actions.get(ns, (None, None))
-            #     if nav_goal:
-            #         self.executor_dict[ns].publish_nav_goal(nav_goal)
-            #     if robot_cmd:
-            #         self.executor_dict[ns].publish_robot_command(robot_cmd)
+            for ns in self.robot_ns_list:
+                nav_goal, robot_cmd = team_actions.get(ns, (None, None))
+                if nav_goal:
+                    self.executor_dict[ns].publish_nav_goal(nav_goal)
+                if robot_cmd:
+                    self.executor_dict[ns].publish_robot_command(robot_cmd)
 
             self.rate.sleep()
 
