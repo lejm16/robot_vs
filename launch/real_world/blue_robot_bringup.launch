@@ -26,9 +26,10 @@
     </node>
     <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher" output="screen"/>
     <!--Unknown!!!!-->
-    <node pkg="wit_ros_imu" type="wit_$(arg type)_ros.py" name="imu" output="screen">
+    <node pkg="robot_vs" type="wit_$(arg type)_ros.py" name="imu" output="screen">
         <param name="port"               type = "str"    value="/dev/imu"/>
         <param name="baud"               type = "int"    value="9600"/>
+        <param name="frame_id" type = "str" value="$(arg robot_namespace)/base_link"/>
         <remap from="/wit/cali" to="wit/cali"/>
         <!-- 如果IMU节点还发布/wit/imu，确保也是相对话题 -->
         <remap from="/wit/imu" to="wit/imu"/>

@@ -43,7 +43,7 @@ def hex_to_altitude(raw_data):
     return list(struct.unpack("h", bytearray(raw_data)))
     
 # 处理串口数据
-def handleSerialData(raw_data):
+def handleSerialData(raw_data, frame_id):
     global buff, key, angle_degree, magnetometer, acceleration, angularVelocity, pub_flag, readreg, calibuff, flag, mag_offset, mag_range, version, longitude_imu, latitude_imu, altitude_imu
     angle_flag=False
     if python_version == '2':
@@ -130,13 +130,13 @@ def handleSerialData(raw_data):
             stamp = rospy.get_rostime()
 
             imu_msg.header.stamp = stamp
-            imu_msg.header.frame_id = "base_link"
+            imu_msg.header.frame_id = frame_id #"ns/base_link"
 
             mag_msg.header.stamp = stamp
-            mag_msg.header.frame_id = "base_link"
+            mag_msg.header.frame_id = frame_id
 
             location_msg.header.stamp = stamp
-            location_msg.header.frame_id = "base_link"
+            location_msg.header.frame_id = frame_id
             
             angle_radian = [angle_degree[i] * math.pi / 180 for i in range(3)]
             qua = quaternion_from_euler(angle_radian[0], angle_radian[1], angle_radian[2])
@@ -370,6 +370,8 @@ if __name__ == "__main__":
     rospy.init_node("imu")
     port = rospy.get_param("~port", "/dev/ttyUSB0")
     baudrate = rospy.get_param("~baud", 9600)
+    frame_id = rospy.get_param("~frame_id", "base_link")
+
     # baudrate = 115200
     print("IMU Type: Normal Port:%s baud:%d" %(port,baudrate))
     imu_msg = Imu()
@@ -403,7 +405,7 @@ if __name__ == "__main__":
                     if recordflag:
                         recordbuff = recordbuff + buff_data
                     for i in range(0, buff_count):
-                        handleSerialData(buff_data[i])
+                        handleSerialData(buff_data[i], frame_id)
             except Exception as e:
                 print("exception:" + str(e))
                 print("imu loss of connection, poor contact, or broken wire")
