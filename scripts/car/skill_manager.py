@@ -9,6 +9,7 @@ from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from move_base_msgs.msg import MoveBaseActionResult
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from robot_vs.msg import BattleMacroState
 from robot_vs.msg import FireEvent
 from robot_vs.msg import RobotState
 
@@ -47,6 +48,9 @@ class SkillManager(object):
         self.team = int(rospy.get_param("~team", 0))
         self.default_hp = float(rospy.get_param("~default_hp", 100.0))
         self.default_ammo = float(rospy.get_param("~default_ammo", 50.0))
+        self.hp = float(self.default_hp)
+        self.ammo = float(self.default_ammo)
+        self.is_alive = True
 
         self._goal_pub = rospy.Publisher(
             "/{}/move_base_simple/goal".format(self.ns),
@@ -87,6 +91,12 @@ class SkillManager(object):
             self._nav_result_cb,
             queue_size=10,
         )
+        self._macro_state_sub = rospy.Subscriber(
+            "/referee/macro_state",
+            BattleMacroState,
+            self._macro_state_cb,
+            queue_size=10,
+        )
 
         self._state_timer = rospy.Timer(rospy.Duration(0.1), self._publish_robot_state)
 
@@ -105,9 +115,20 @@ class SkillManager(object):
         self._cmd_vel_pub.publish(Twist())
 
     def publish_cmd_vel(self, cmd_vel):
+        with self._lock:
+            alive = bool(self.is_alive)
+        if not alive:
+            self._cmd_vel_pub.publish(Twist())
+            return
         self._cmd_vel_pub.publish(cmd_vel)
 
     def publish_fire_event(self, x, y, yaw):
+        with self._lock:
+            alive = bool(self.is_alive)
+            ammo = float(self.ammo)
+        if (not alive) or ammo <= 0.0:
+            return
+
         msg = FireEvent()
         msg.shooter_ns = self.ns
         msg.x = float(x)
@@ -135,6 +156,34 @@ class SkillManager(object):
     def _amcl_pose_cb(self, msg):
         with self._lock:
             self._latest_pose = msg.pose.pose
+
+    def _extract_self_macro_state(self, team_state):
+        if team_state is None:
+            return None
+
+        robot_ns = getattr(team_state, "robot_ns", [])
+        hp = getattr(team_state, "hp", [])
+        ammo = getattr(team_state, "ammo", [])
+        alive = getattr(team_state, "alive", [])
+
+        size = min(len(robot_ns), len(hp), len(ammo), len(alive))
+        for idx in range(size):
+            if str(robot_ns[idx]).strip().strip("/") == self.ns.strip().strip("/"):
+                return float(hp[idx]), float(ammo[idx]), bool(alive[idx])
+        return None
+
+    def _macro_state_cb(self, msg):
+        state = self._extract_self_macro_state(msg.red)
+        if state is None:
+            state = self._extract_self_macro_state(msg.blue)
+        if state is None:
+            return
+
+        hp, ammo, alive = state
+        with self._lock:
+            self.hp = max(0.0, float(hp))
+            self.ammo = max(0.0, float(ammo))
+            self.is_alive = bool(alive and self.hp > 0.0)
 
     # ------------------------------------------------------------------
     # 技能生命周期与工厂
@@ -229,6 +278,9 @@ class SkillManager(object):
         msg.in_combat = (self.active_action == "ATTACK")
 
         with self._lock:
+            msg.hp = float(self.hp)
+            msg.ammo = float(self.ammo)
+            msg.alive = bool(self.is_alive)
             if self._latest_pose is not None:
                 msg.pose = self._latest_pose
             msg.twist = self._latest_twist

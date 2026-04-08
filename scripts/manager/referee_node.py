@@ -163,19 +163,7 @@ class RefereeNode(object):
             record["x"] = float(msg.pose.position.x)
             record["y"] = float(msg.pose.position.y)
             record["yaw"] = float(self._quaternion_to_yaw(msg.pose.orientation))
-            record["ammo"] = float(msg.ammo)
             record["last_update"] = rospy.Time.now().to_sec()
-
-            # 裁判系统维护 HP 主真值；首次可参考上报值。
-            if record.get("hp", self.default_hp) == self.default_hp:
-                try:
-                    msg_hp = int(round(float(msg.hp)))
-                    if msg_hp >= 0:
-                        record["hp"] = msg_hp
-                except Exception:
-                    pass
-
-            record["alive"] = bool(record["hp"] > 0)
 
     def _ray_hit(self, shooter_x, shooter_y, shooter_yaw, target_x, target_y):
         dx = float(target_x) - float(shooter_x)
@@ -209,6 +197,17 @@ class RefereeNode(object):
             if shooter_team not in ("red", "blue"):
                 rospy.logwarn_throttle(2.0, "[referee] unknown shooter team: %s", shooter_ns)
                 return
+
+            # 开火先进行弹药结算：无弹药则拦截，命中判定不再继续。
+            if not shooter.get("alive", True):
+                rospy.logwarn_throttle(2.0, "[referee] dead shooter fire blocked: %s", shooter_ns)
+                return
+
+            old_ammo = float(shooter.get("ammo", self.default_ammo))
+            if old_ammo <= 0.0:
+                rospy.logwarn_throttle(2.0, "[referee] fire blocked (no ammo): %s", shooter_ns)
+                return
+            shooter["ammo"] = max(0.0, old_ammo - 1.0)
 
             # 以 fire_event 的位姿作为射击真值。
             shooter["x"] = float(msg.x)
