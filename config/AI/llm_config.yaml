@@ -16,7 +16,7 @@ models:
     timeout_s: 30.0
 
 #RUBBISH!!!
-  glm:
+  glm-flashX:
     base_url: "https://open.bigmodel.cn/api/paas/v4"
     model_name: "glm-4.7-flashX"
     timeout_s: 30.0
@@ -42,4 +42,4 @@ sides:
   red:
     active_model: "kimi-turbo"       # 红方模型
   blue:
-    active_model: "glm"         # 蓝方模型
+    active_model: "kimi-turbo"         # 蓝方模型
