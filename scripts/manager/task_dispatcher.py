@@ -113,9 +113,13 @@ class TaskDispatcher(object):
 		if not isinstance(target, dict):
 			target = {}
 
-		target_x = float(target.get("x", 0.0))
-		target_y = float(target.get("y", 0.0))
-		target_yaw = float(target.get("yaw", 0.0))
+		# 目标点量化到 0.25 m：敌人每挪动几厘米就换一个 task_id 的话，
+		# 车端每个周期都会重启技能（开火冷却被重置、任务疯狂切换），
+		# 量化之后只有真的移动了才下发新任务。
+		quantum = 0.25
+		target_x = round(self._to_number(target.get("x", 0.0), 0.0) / quantum) * quantum
+		target_y = round(self._to_number(target.get("y", 0.0), 0.0) / quantum) * quantum
+		target_yaw = round(self._to_number(target.get("yaw", 0.0), 0.0) / quantum) * quantum
 		mode = int(task.get("mode", 0))
 		timeout = float(task.get("timeout", self.default_timeout))
 

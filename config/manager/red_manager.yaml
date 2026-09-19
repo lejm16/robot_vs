@@ -14,6 +14,8 @@ arena_min_x: -3.9
 arena_max_x: 3.9
 arena_min_y: -1.9
 arena_max_y: 1.9
+# 侦察点轮换周期（秒）：到点后隔这么久换下一个侦察目标，避免车“到了就站着不动”
+scout_dwell_s: 8.0
 # 如果未来想启用 LLM，再按需配置
 llm:
    enabled: false

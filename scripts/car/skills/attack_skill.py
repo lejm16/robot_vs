@@ -54,7 +54,6 @@ class AttackSkill(BaseSkill):
         self.pose_lost_timeout_s = 1.5
         self.obstacle_stop_distance = 0.5
 
-        self._last_fire_ts = None
         self._start_ts = None
         self._last_pose_ts = None
         self._steering = None
@@ -81,7 +80,6 @@ class AttackSkill(BaseSkill):
         self.pose_lost_timeout_s = float(params.get("pose_lost_timeout_s", 1.5))
         self.obstacle_stop_distance = float(rospy.get_param("~attack_obstacle_stop", 0.5))
 
-        self._last_fire_ts = None
         self._start_ts = rospy.Time.now().to_sec()
         self._last_pose_ts = None
 
@@ -178,13 +176,13 @@ class AttackSkill(BaseSkill):
         if abs(err) > allowed:
             return
 
-        if self._last_fire_ts is not None and (now - self._last_fire_ts) < self.fire_cooldown_s:
+        if not self.skill_manager.can_fire(self.fire_cooldown_s):
             return
 
         self.skill_manager.publish_fire_event(
             x=pose.position.x, y=pose.position.y, yaw=yaw,
         )
-        self._last_fire_ts = now
+        self.skill_manager.note_fired()
         rospy.loginfo(
             "[%s] AttackSkill fire_event: pose=(%.2f, %.2f) yaw=%.2f dist=%.2f err=%.3f",
             self.skill_manager.ns, pose.position.x, pose.position.y, yaw, distance, err,

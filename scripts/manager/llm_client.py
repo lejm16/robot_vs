@@ -45,6 +45,9 @@ class LLMClient(BasePlanner):
         # ---- 缓存敌方状态（最后已知位置） ----
         self._last_enemy_state = []
 
+        # 侦察点轮换周期：到点后隔这么久换下一个目标，避免车“到了就站着不动”
+        self._scout_dwell_s = float(rospy.get_param("~scout_dwell_s", 8.0))
+
     def plan_tasks(self, battle_state):
         if self._use_llm:
             try:
@@ -491,20 +494,18 @@ class LLMClient(BasePlanner):
 
         # ---- 追击模式：向前推进（朝敌人方向） ----
         if tactic_mode == "pursuit":
-            # 用最后已知敌人位置作为目标
-            target_x, target_y = 0.0, 0.0
+            car_ids = sorted([t['id'] for t in team_state])
             if self._last_enemy_state:
+                # 有敌方历史位置：推进到最后已知位置附近，并散开一点避免叠在一起
                 target_x = sum(e.get('x', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
                 target_y = sum(e.get('y', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
                 rospy.loginfo_throttle(5.0, "[Pursuit] 追击目标: (%.1f, %.1f)", target_x, target_y)
-            else:
-                rospy.loginfo_throttle(5.0, "[Pursuit] 无历史位置，朝地图中心推进")
-
-            positions = {}
-            car_ids = sorted([t['id'] for t in team_state])
-            for car_id in car_ids:
-                positions[car_id] = {'x': target_x, 'y': target_y}
-            return positions
+                return self._spread_around(car_ids, target_x, target_y, radius=0.9)
+            # 完全没有敌方线索：散开侦察。
+            # 注意：这里原来是“全队冲向地图中心 (0,0)”，结果是六台车全部挤在中场，
+            # 既撞成一团又不动，还会被中间那根横梁卡住。
+            rospy.loginfo_throttle(5.0, "[Pursuit] 无敌方线索 → 转为分散侦察")
+            return self._get_scout_positions(team_state)
 
         # ---- 攻守模式：由 _generate_tasks 特殊处理，这里不返回位置 ----
         if tactic_mode == "attack_and_retreat":
@@ -537,7 +538,7 @@ class LLMClient(BasePlanner):
         return self._get_scout_positions(team_state)
 
     def _get_pursuit_positions(self, team_state):
-        """追击模式：所有存活小车前往最后已知的敌人平均位置"""
+        """追击模式：前往最后已知的敌人平均位置附近（散开，别全挤一个点）。"""
         if not team_state or not self._last_enemy_state:
             return {}
 
@@ -545,28 +546,53 @@ class LLMClient(BasePlanner):
         avg_y = sum(e.get('y', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
 
         rospy.loginfo_throttle(5.0, "[Pursuit] 追击目标位置: (%.1f, %.1f)", avg_x, avg_y)
-
-        positions = {}
         car_ids = sorted([t['id'] for t in team_state])
-        for car_id in car_ids:
-            positions[car_id] = {'x': avg_x, 'y': avg_y}
+        return self._spread_around(car_ids, avg_x, avg_y, radius=0.9)
 
+    @staticmethod
+    def _spread_around(car_ids, center_x, center_y, radius=0.9):
+        """把若干台车均匀铺在以 (center_x, center_y) 为中心的小圆上。"""
+        positions = {}
+        count = max(1, len(car_ids))
+        for index, car_id in enumerate(car_ids):
+            angle = index * 2.0 * math.pi / count
+            positions[car_id] = {
+                'x': center_x + math.cos(angle) * radius,
+                'y': center_y + math.sin(angle) * radius,
+            }
         return positions
 
     def _get_scout_positions(self, team_state):
-        """分散侦察点（必须落在场地内，world0.world 围墙为 x=±4.05 / y=±2.0）。"""
-        scout_points = [
-            {'x': 3.2, 'y': 1.2},
-            {'x': -3.2, 'y': 1.2},
-            {'x': 0.0, 'y': -1.5},
-        ]
+        """侦察点：朝对方半场来回巡逻，并定期换目标，保证一直在动。
+
+        设计要点（都是踩过的坑）：
+          1. 朝**对方半场**推进，而不是停在自家半场——否则两队永远见不到面；
+          2. 红蓝镜像，避免两队小车把同一个坐标当目标撞在一起；
+          3. 每隔 scout_dwell_s 在两个纵深之间轮换一次——否则车到达后
+             会一直待在原地（任务目标不变 → 没有新任务 → 看起来就是"不动"）；
+          4. 三个候选横坐标放在 x = ±3.3 与 0：±2.5 正好是掩体的位置，会撞上。
+        """
+        car_ids = sorted([t['id'] for t in team_state])
+        if not car_ids:
+            return {}
+
+        is_blue = any('blue' in str(car_id).lower() for car_id in car_ids)
+        forward = 1.0 if is_blue else -1.0     # 红方压向 y<0，蓝方压向 y>0
+        xs = (-3.3, 0.0, 3.3)
+        ys = (0.8, -0.8)                        # 两条纵深线，轮流去
+
+        try:
+            slot = int(rospy.Time.now().to_sec() / max(1.0, self._scout_dwell_s))
+        except Exception:
+            slot = 0
 
         positions = {}
-        car_ids = sorted([t['id'] for t in team_state])
-        for i, car_id in enumerate(car_ids):
-            point = scout_points[i % len(scout_points)]
-            positions[car_id] = {'x': point['x'], 'y': point['y']}
-            rospy.loginfo_throttle(5.0, "[Scout] %s → (%.1f, %.1f)", car_id, point['x'], point['y'])
+        for index, car_id in enumerate(car_ids):
+            point_x = xs[index % len(xs)]
+            point_y = ys[(slot + index) % len(ys)] * forward
+            positions[car_id] = {'x': point_x, 'y': point_y}
+            rospy.loginfo_throttle(
+                5.0, "[Scout] %s → (%.1f, %.1f)", car_id, point_x, point_y)
 
         return positions
 

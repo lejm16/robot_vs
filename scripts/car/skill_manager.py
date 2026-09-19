@@ -53,6 +53,7 @@ class SkillManager(object):
         self._latest_scan_stamp = None
         self._scan_timeout_s = float(rospy.get_param("~scan_timeout_s", 1.0))
         self._nav_fallback_until = 0.0
+        self._last_fire_ts = None
 
         self.active_skill = None
         self.active_action = "NONE"
@@ -235,6 +236,22 @@ class SkillManager(object):
         msg.y = float(y)
         msg.yaw = float(yaw)
         self._fire_event_pub.publish(msg)
+
+    def can_fire(self, cooldown_s):
+        """开火冷却判断。
+
+        冷却状态必须挂在 SkillManager（车一级）上：技能对象会随着任务切换被重建，
+        如果把 `_last_fire_ts` 放在技能里，敌人每移动一点就换任务、冷却被重置，
+        弹药会在几秒内被打光。
+        """
+        with self._lock:
+            if self._last_fire_ts is None:
+                return True
+            return (rospy.Time.now().to_sec() - float(self._last_fire_ts)) >= float(cooldown_s)
+
+    def note_fired(self):
+        with self._lock:
+            self._last_fire_ts = rospy.Time.now().to_sec()
 
     # ------------------------------------------------------------------
     # 导航状态

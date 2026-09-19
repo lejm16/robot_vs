@@ -128,6 +128,7 @@ python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
 | **车只在原地打转、不往前走** | move_base 全局规划一直失败，进入 recovery 的"原地自转"（最常见是 amcl 没定位成功 → 缺 `map→odom` 的 TF） | 现在已经会自动降级：日志里会出现 `本车接下来会自动改用自带激光绕障直行`。若降级后还不走，看 `tf_bridge` 打印的实际坐标系名字 |
 | 所有车坐标都是 (0,0)，裁判永远打不中 | `/<ns>/odom`、`/<ns>/amcl_pose` 收不到数据 | 确认 gazebo 插件的话题是不是带命名空间（`rostopic list \| grep -E 'cmd_vel\|odom\|scan'`） |
 | 车往场外/墙里开 | 目标点在场地外 | 检查 `arena_*` 参数；`TaskDispatcher` 会自动夹目标点并打印 `超出场地，已夹到` |
+| 车开到一个点就站着不动 | 侦察目标是固定点，到了以后没有新任务下发 | 已内置轮换：`scout_dwell_s`（默认 8 s）到点后换下一个侦察目标，朝对方半场来回巡逻 |
 | 双方互相看不见 | 视野太小 | `config/manager/referee.yaml` 的 `vision_range`（默认 3.5 m）与 `fov_deg` |
 
 ### 定位链路与两条导航路线
