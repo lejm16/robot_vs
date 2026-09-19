@@ -66,9 +66,18 @@ class RefereeNode(object):
             "/referee/macro_state", BattleMacroState, queue_size=10
         )
         # 游戏状态管理
+        self.time_limit_s = float(rospy.get_param("~time_limit_s", 0.0))  # 0 = 不限时
+        self.auto_start = bool(rospy.get_param("~auto_start", False))
         self._game_status = "IDLE"
+        self._game_start_ts = None
+        self._final_elapsed = 0.0
+        self._game_winner = ""
+        self._game_reason = ""
         self.game_state_pub = rospy.Publisher('/game/state', GameState, queue_size=10)
         rospy.Subscriber('/game/command', String, self._game_command_callback)
+
+        if self.auto_start:
+            self._start_game("auto_start param")
 
         rospy.loginfo(
             "RefereeNode initialized: loop_hz=%.1f discover_hz=%.1f fire_range=%.2f hit_width=%.2f fire_damage=%d vision_range=%.2f",
@@ -492,14 +501,9 @@ class RefereeNode(object):
             self._publish_visible_enemies()
             self._publish_macro_state()
 
-            # ---- 发布游戏状态 ----
-            state_msg = GameState()
-            state_msg.status = self._game_status
-            state_msg.elapsed = 0.0
-            state_msg.time_limit = 0.0
-            state_msg.winner = ""
-            state_msg.reason = ""
-            self.game_state_pub.publish(state_msg)
+            # ---- 胜负判定 + 发布游戏状态 ----
+            self._update_game_result()
+            self._publish_game_state()
 
             main_rate.sleep()
 
@@ -508,16 +512,117 @@ class RefereeNode(object):
             self._map_info = msg.info
             self._map_data = msg.data  # tuple/list of int8
 
+    # ------------------------------------------------------------------
+    # 比赛状态机
+    # ------------------------------------------------------------------
+    def _elapsed(self):
+        """比赛已进行秒数；FINISHED 后冻结在结束时刻。"""
+        if self._game_status == "FINISHED":
+            return float(self._final_elapsed)
+        if self._game_start_ts is None:
+            return 0.0
+        return max(0.0, rospy.Time.now().to_sec() - float(self._game_start_ts))
+
+    def _start_game(self, source="manual"):
+        self._game_status = "PLAYING"
+        self._game_start_ts = rospy.Time.now().to_sec()
+        self._final_elapsed = 0.0
+        self._game_winner = ""
+        self._game_reason = ""
+        rospy.loginfo(
+            "Referee: game PLAYING (%s), time_limit=%.1fs", source, self.time_limit_s
+        )
+
+    def _reset_game(self):
+        """复位：恢复所有已发现机器人的 HP/弹药，并回到 IDLE。"""
+        with self._lock:
+            for record in self.global_states.values():
+                record["hp"] = int(self.default_hp)
+                record["ammo"] = float(self.default_ammo)
+                record["alive"] = True
+        self._game_status = "IDLE"
+        self._game_start_ts = None
+        self._final_elapsed = 0.0
+        self._game_winner = ""
+        self._game_reason = ""
+        rospy.loginfo("Referee: game RESET (hp/ammo restored, status=IDLE)")
+
+    def _finish_game(self, winner, reason):
+        self._final_elapsed = self._elapsed()
+        self._game_status = "FINISHED"
+        self._game_winner = str(winner)
+        self._game_reason = str(reason)
+        rospy.loginfo(
+            "Referee: game FINISHED winner=%s reason=%s elapsed=%.1fs",
+            self._game_winner, self._game_reason, self._final_elapsed,
+        )
+
+    def _update_game_result(self):
+        """只在 PLAYING 时判定胜负；结束后保持 FINISHED 直到 start/reset。"""
+        if self._game_status != "PLAYING":
+            return
+
+        with self._lock:
+            red_total = red_alive = blue_total = blue_alive = 0
+            red_hp = blue_hp = 0
+            for record in self.global_states.values():
+                team = record.get("team")
+                if team not in ("red", "blue"):
+                    continue
+                hp = int(record.get("hp", self.default_hp))
+                alive = bool(record.get("alive", True)) and hp > 0
+                if team == "red":
+                    red_total += 1
+                    red_hp += max(0, hp)
+                    red_alive += 1 if alive else 0
+                else:
+                    blue_total += 1
+                    blue_hp += max(0, hp)
+                    blue_alive += 1 if alive else 0
+
+            # 双方都还没被裁判发现时不判定，避免开场直接结束
+            if red_total == 0 or blue_total == 0:
+                return
+
+            if blue_alive == 0 and red_alive == 0:
+                self._finish_game("draw", "all_dead")
+                return
+            if blue_alive == 0:
+                self._finish_game("red", "all_enemy_dead")
+                return
+            if red_alive == 0:
+                self._finish_game("blue", "all_enemy_dead")
+                return
+
+            if self.time_limit_s > 0.0 and self._elapsed() >= self.time_limit_s:
+                if red_hp > blue_hp:
+                    self._finish_game("red", "timeout")
+                elif blue_hp > red_hp:
+                    self._finish_game("blue", "timeout")
+                else:
+                    self._finish_game("draw", "timeout")
+
+    def _publish_game_state(self):
+        state_msg = GameState()
+        state_msg.status = self._game_status
+        state_msg.elapsed = float(self._elapsed())
+        state_msg.time_limit = float(self.time_limit_s)
+        state_msg.winner = self._game_winner
+        state_msg.reason = self._game_reason
+        self.game_state_pub.publish(state_msg)
+
     def _game_command_callback(self, msg):
-        """接收手动启动指令"""
+        """接收手动指令：start / stop / reset"""
         cmd = msg.data.strip().lower()
         if cmd == 'start':
-            self._game_status = "PLAYING"
-            rospy.loginfo("Referee: Received start command, game_status set to PLAYING")
+            self._start_game("manual")
         elif cmd == 'stop':
             self._game_status = "IDLE"
             rospy.loginfo("Referee: Received stop command, game_status set to IDLE")
-    # 可以添加其他命令，如 pause/reset 等
+        elif cmd == 'reset':
+            self._reset_game()
+        else:
+            rospy.logwarn("Referee: unknown game command: %s", cmd)
 
 def main():
     rospy.init_node("referee_node", anonymous=False)

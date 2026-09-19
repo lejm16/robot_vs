@@ -47,8 +47,14 @@ class TaskEngine(object):
 
         with self._lock:
             current = self._current_task
-            if current is not None and int(current.get("task_id", 0)) == int(msg.task_id):
-                return  # 相同 task_id 视为重复任务，直接忽略
+            current_status = self._task_status
+            # 相同 task_id 只在任务“仍在执行”时视为重复，避免打断正在跑的技能；
+            # 任务一旦 SUCCESS / FAILED 就必须允许重发：TaskDispatcher 对内容相同的
+            # 任务会复用同一个 task_id，若无条件忽略，小车超时后会永久停在原地。
+            if (current is not None
+                    and int(current.get("task_id", 0)) == int(msg.task_id)
+                    and str(current_status) == RUNNING):
+                return
 
             rospy.loginfo(
                 "[%s] TaskEngine: new task task_id=%d action=%s target=(%.2f, %.2f) yaw=%.2f",

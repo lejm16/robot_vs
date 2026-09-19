@@ -106,22 +106,26 @@ class LLMClient(BasePlanner):
         robot_ids = []
 
         for ns, data in friendly.items():
+            if not isinstance(data, dict):
+                continue
             state = data.get('state', {})
             if isinstance(state, dict):
-                hp = state.get('hp', 100.0)
-                alive = state.get('alive', True)
+                hp = self._to_float(state.get('hp', 100.0), 100.0)
+                alive = bool(state.get('alive', True))
                 if hp <= 0:
                     alive = False
 
+                car_x, car_y, car_yaw = self._extract_pose(state)
+
                 team_state.append({
                     'id': ns,
-                    'x': state.get('x', 0.0),
-                    'y': state.get('y', 0.0),
-                    'yaw': state.get('yaw', 0.0),
+                    'x': car_x,
+                    'y': car_y,
+                    'yaw': car_yaw,
                     'hp': hp,
-                    'ammo': state.get('ammo', 50.0),
+                    'ammo': self._to_float(state.get('ammo', 50.0), 50.0),
                     'alive': alive,
-                    'in_combat': state.get('in_combat', False)
+                    'in_combat': bool(state.get('in_combat', False))
                 })
                 robot_ids.append(ns)
 
@@ -135,13 +139,69 @@ class LLMClient(BasePlanner):
                 if isinstance(e, dict):
                     enemy_state.append({
                         'id': e.get('robot_ns', e.get('id', 'unknown')),
-                        'x': e.get('x', 0.0),
-                        'y': e.get('y', 0.0),
-                        'hp': e.get('hp', 100.0),
-                        'visible': e.get('visible', True)
+                        'x': self._to_float(e.get('x', 0.0), 0.0),
+                        'y': self._to_float(e.get('y', 0.0), 0.0),
+                        'hp': self._to_float(e.get('hp', 100.0), 100.0),
+                        'visible': bool(e.get('visible', True))
                     })
 
         return team_state, enemy_state, robot_ids
+
+    @staticmethod
+    def _to_float(value, default=0.0):
+        """把 ROS 消息里的数值安全地转成 float。"""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
+    @staticmethod
+    def _quaternion_to_yaw(q):
+        """四元数（字典形式）转 yaw。"""
+        try:
+            qx = float(q.get('x', 0.0))
+            qy = float(q.get('y', 0.0))
+            qz = float(q.get('z', 0.0))
+            qw = float(q.get('w', 1.0))
+        except (TypeError, ValueError):
+            return 0.0
+        return math.atan2(2.0 * (qw * qz + qx * qy), 1.0 - 2.0 * (qy * qy + qz * qz))
+
+    def _extract_pose(self, state):
+        """从 RobotState 字典中取出 (x, y, yaw)。
+
+        GlobalObserver 会把 RobotState 递归转成字典，位姿位于
+        state['pose']['position']['x'/'y']，而不是平铺的 x/y。
+        这里同时兼容平铺写法，避免上游格式变化时再次退化到原点。
+        """
+        x = state.get('x')
+        y = state.get('y')
+        yaw = state.get('yaw')
+
+        pose = state.get('pose')
+        if isinstance(pose, dict):
+            position = pose.get('position')
+            if not isinstance(position, dict):
+                position = pose
+            if x is None:
+                x = position.get('x')
+            if y is None:
+                y = position.get('y')
+            orientation = pose.get('orientation')
+            if yaw is None and isinstance(orientation, dict):
+                yaw = self._quaternion_to_yaw(orientation)
+
+        if x is None or y is None:
+            position = state.get('position')
+            if isinstance(position, dict):
+                if x is None:
+                    x = position.get('x')
+                if y is None:
+                    y = position.get('y')
+
+        return (self._to_float(x, 0.0),
+                self._to_float(y, 0.0),
+                self._to_float(yaw, 0.0))
 
     def _assess_threats(self, team_state, enemy_state):
         if not enemy_state or not team_state:

@@ -9,13 +9,20 @@
 
     使用方法：
       roslaunch robot_vs simulation/3v3vs_simulation.launch
+      # 需要自动开赛（免手动发 /game/command start）时：
+      roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true
   -->
+
+  <!-- 是否自动开始比赛；false 时需手动发一次 /game/command -->
+  <arg name="auto_start" default="false" />
 
   <!-- 1. 启动 6 台机器人仿真环境 -->
   <include file="$(find robot_vs)/launch/simulation/multi_robot6_turtlebot.launch" />
 
   <!-- 2. 启动裁判系统 -->
-  <include file="$(find robot_vs)/launch/manager/referee.launch" />
+  <include file="$(find robot_vs)/launch/manager/referee.launch">
+    <arg name="auto_start" value="$(arg auto_start)" />
+  </include>
 
   <!-- 3. 启动红蓝 Manager -->
   <include file="$(find robot_vs)/launch/manager/managers.launch" />

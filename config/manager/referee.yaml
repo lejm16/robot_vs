@@ -1,6 +1,11 @@
 loop_hz: 10.0
 discover_hz: 1.0
 
+# 比赛时长（秒），0 = 不限时（只按“一方全灭”判负）
+time_limit_s: 0.0
+# true = 裁判启动后自动进入 PLAYING，无需手动发 /game/command start
+auto_start: false
+
 default_hp: 100
 default_ammo: 50.0
 fire_range: 3.0

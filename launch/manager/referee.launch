@@ -1,6 +1,8 @@
 <launch>
   <arg name="referee_param_file" default="$(find robot_vs)/config/manager/referee.yaml" />
   <arg name="viz_param_file" default="$(find robot_vs)/config/manager/viz.yaml" />
+  <!-- true = 裁判启动后自动开始比赛 -->
+  <arg name="auto_start" default="false" />
 
   <node pkg="robot_vs"
         type="referee_node.py"
@@ -8,6 +10,8 @@
         output="screen"
         required="false">
     <rosparam command="load" file="$(arg referee_param_file)" />
+    <!-- 只在显式打开时才覆盖 YAML 里的 auto_start，否则以 referee.yaml 为准 -->
+    <param name="auto_start" value="true" if="$(arg auto_start)" />
   </node>
 
   <node pkg="robot_vs"

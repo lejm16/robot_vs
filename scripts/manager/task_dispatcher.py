@@ -14,7 +14,7 @@ except NameError:
 
 
 class TaskDispatcher(object):
-	"""将团队任务发布到 /<ns>/task_cmd 话题。"""
+	"""将团队任务发布到 /<ns>/car_task 话题。"""
 
 	def __init__(self, my_cars=None, default_timeout=2.0):
 		if my_cars is None:
@@ -178,3 +178,12 @@ class TaskDispatcher(object):
 				)
 			except Exception as exc:
 				rospy.logwarn("dispatch failed for %s: %s", ns, exc)
+
+	def send_stop(self, ns, reason="stop"):
+		"""给指定小车发布一条 STOP 任务（供 Manager 兜底/结束比赛时调用）。"""
+		try:
+			pub = self._ensure_publisher(ns)
+			msg = self._build_task_msg(ns, self._safe_stop_task(reason))
+			pub.publish(msg)
+		except Exception as exc:
+			rospy.logwarn("send_stop failed for %s: %s", ns, exc)

@@ -3,7 +3,8 @@
 本仓库实现了多机器人红蓝对抗系统，采用 **Manager + Car Agent + Skill** 三层架构：
 - **Manager 层**（`scripts/manager/`）：感知全局战场状态，调用 LLM 规划战术，通过 `TaskCommand` 消息向各小车下发任务。
 - **Car Agent 层**（`scripts/car/`）：每辆小车运行一个独立的 `car_node.py`，接收任务并通过技能（Skill）执行动作，同时将 `RobotState` 反馈给 Manager。
-- **Skill 系统**（`scripts/car/skills/`）：GoToSkill（导航）、StopSkill（刹车）、AttackSkill（攻击），实现任务的原子化执行。
+- **Skill 系统**（`scripts/car/skills/`）：GoToSkill（导航）、StopSkill（刹车）、AttackSkill（追击开火）、RotateSkill（原地转向）、RetreatSkill（撤退），实现任务的原子化执行。
+- **裁判系统**（`scripts/manager/referee_node.py`）：全局唯一，负责命中判定、扣血、可见敌人计算与比赛胜负判定。
 
 详细架构说明与数据流图请参阅 → **[技术原理文档](TECHNICAL.md)**
 
@@ -20,8 +21,11 @@
 - 支持 **仿真环境** 与 **现实环境** 下的多机器人独立运行
 - 采用 **红方 / 蓝方 两个阵营** 的对抗结构
   - 每个阵营有一个 Manager 节点负责 LLM 决策与任务分配
-  - 每辆小车运行一个 Car Agent，通过技能系统执行 GOTO / STOP / ATTACK 三类动作
+  - 每辆小车运行一个 Car Agent，通过技能系统执行 GOTO / STOP / ATTACK / ROTATE / RETREAT 五类动作
   - 小车携带 `mode` 字段区分待机 / 巡逻 / 攻击模式
+- **规则博弈兜底**：LLM 不可用时自动走内置规则（角色分配 + 集火目标 + 攻守战术 + 低血撤退）
+- **裁判判定**：射线命中判定、掩体遮挡、可见敌人视野计算、一方全灭 / 超时判负
+- **比赛状态机**：`IDLE / PLAYING / FINISHED` 三态，支持手动 `start` / `stop` / `reset` 或启动即开赛
 - 基于 **命名空间 + TF 前缀** 实现多机话题隔离，防止冲突
 - `TaskCommand` / `RobotState` 消息形成完整的任务下发与状态反馈闭环
 - 仿真与现实话题结构保持一致，便于算法迁移
@@ -41,15 +45,24 @@ git clone https://github.com/Xqrion/robot_vs.git
 # 2. 编译
 cd ~/catkin_ws && catkin_make && source devel/setup.bash
 
-# 3. 启动 Manager（默认只启动红方；如需蓝方，取消注释 launch/manager/managers.launch 中对应节点）
-roslaunch robot_vs managers.launch
+# 3. 一键启动 3V3 仿真
+#    （Gazebo 6 车 + 裁判 + 红蓝两个 Manager + 6 个 Car Agent）
+roslaunch robot_vs simulation/3v3vs_simulation.launch
 
-# 4. 启动 Car Agent（红蓝各一辆；按需取消注释 launch/car/cars.launch 中多车配置）
-roslaunch robot_vs cars.launch
+# 4. 另开一个终端：开始比赛（比赛默认处于 IDLE，必须手动 start，否则 Manager 只会空转）
+rostopic pub -1 /game/command std_msgs/String "data: 'start'"
 ```
 
-> 两个 launch 文件均会自动加载对应的 YAML 配置文件，无需手动传参。  
-> 如需修改巡逻点、队伍颜色等参数，请直接编辑 `config/` 目录下对应的 YAML 文件。
+> 想省掉第 4 步可以加 `auto_start:=true`：
+> `roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true`
+>
+> 比赛结束后可复位再来一局：`rostopic pub -1 /game/command std_msgs/String "data: 'reset'"`
+>
+> 若只想起单条链路做调试：`roslaunch robot_vs managers.launch`（红蓝两个 Manager 都会启动）
+> 加 `roslaunch robot_vs cars.launch`（红蓝各一辆小车）。
+>
+> 各 launch 会自动加载对应的 YAML 配置，无需手动传参；巡逻点、队伍颜色、命中判定等参数
+> 请直接编辑 `config/` 下对应的 YAML 文件。
 
 ---
 
@@ -58,7 +71,7 @@ roslaunch robot_vs cars.launch
 | 文档 | 内容 |
 |------|------|
 | [环境配置](INSTALL.md) | 虚拟机搭建、ROS 安装、项目部署全流程 |
-| [技术原理](TECHNICAL.md) | 系统架构、Manager/Car/Skill 详解、ROS 消息流、数据流图 |
+| [技术原理](TECHNICAL.md) | 系统架构、Manager/Car/Skill 详解、ROS 消息流、数据流图、比赛状态机与裁判判定 |
 
 ---
 
@@ -70,6 +83,6 @@ roslaunch robot_vs cars.launch
 | 红蓝阵营 Manager 框架 | ✅ 已完成 |
 | 真机局域网下通信测试 | ✅ 已完成 |
 | Car Agent + Skill 系统 | ✅ 已完成 |
-| 裁判系统对接 | 🚧 进行中 |
-| 大模型接入 | 🚧 进行中 |
+| 裁判系统对接 | ✅ 基础版（命中/遮挡/视野/胜负判定） |
+| 大模型接入 | 🚧 规划服务已实现，默认关闭（`llm.enabled: false`） |
 | 现实环境部署 | 🚧 进行中 |

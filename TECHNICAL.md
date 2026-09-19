@@ -15,6 +15,7 @@
 - [7. 多机器人命名空间与话题管理](#7-多机器人命名空间与话题管理)
 - [8. TF 坐标系前缀隔离](#8-tf-坐标系前缀隔离)
 - [9. 仿真与现实的一致性设计](#9-仿真与现实的一致性设计)
+- [10. 比赛状态机与裁判判定](#10-比赛状态机与裁判判定)
 
 ---
 
@@ -75,7 +76,7 @@ flowchart LR
         A["AttackSkill\n转向 + 模拟开火"]
     end
 
-    DIS -- "/<ns>/task_cmd\n(TaskCommand)" --> SUB
+    DIS -- "/<ns>/car_task\n(TaskCommand)" --> SUB
     SM -- "/<ns>/robot_state\n(RobotState)" --> OBS
     SM --> G & S & A
 ```
@@ -87,7 +88,7 @@ flowchart LR
 
 ```
 LLM / Manager
-     │  TaskCommand  (/<ns>/task_cmd)
+     │  TaskCommand  (/<ns>/car_task)
      ▼
 Car Agent (car_node.py)
   ├─ task_engine.py   ←→  skill_manager.py
@@ -97,9 +98,11 @@ Car Agent (car_node.py)
   │                        publish_cmd_vel()
   │                        _publish_robot_state() → 10 Hz
   └──────────────────────→ Skills
-                              GoToSkill → /<ns>/move_base_simple/goal
-                              StopSkill → /<ns>/cmd_vel (零速)
-                              AttackSkill → /<ns>/cmd_vel (转向) + 开火信号
+                              GoToSkill → /<ns>/cmd_vel (转向 + 前进)
+                              StopSkill → /<ns>/cmd_vel (零速) + /<ns>/move_base/cancel
+                              AttackSkill → /<ns>/cmd_vel (转向追击) + /<ns>/fire_event
+                              RotateSkill → /<ns>/cmd_vel (原地旋转到 target_yaw)
+                              RetreatSkill → /<ns>/cmd_vel (向撤退点移动)
      ▲  RobotState  (/<ns>/robot_state)
      │
 Manager (GlobalObserver)
@@ -111,7 +114,7 @@ Manager (GlobalObserver)
 
 **位置：** `scripts/manager/`
 
-Manager 是每个阵营的"指挥中枢"，以固定频率（`loop_hz`，默认 1 Hz）循环执行以下步骤：
+Manager 是每个阵营的"指挥中枢"，以固定频率（`loop_hz`，默认 20 Hz）循环执行以下步骤：
 
 ```
 1. GlobalObserver.get_battle_state()   → 收集所有小车的最新 RobotState
@@ -130,22 +133,28 @@ Manager 是每个阵营的"指挥中枢"，以固定频率（`loop_hz`，默认 
 | `llm_client.py` | 调用 LLM API，解析返回的 JSON 任务列表；LLM 不可用时走规则兜底 |
 | `task_dispatcher.py` | 为每辆小车发布 `TaskCommand`；相同任务不重复下发（去重机制保护） |
 
+LLM 不可用（`llm.enabled: false` 或请求失败）时，`llm_client.py` 会走内置的**规则博弈**：
+
+1. 角色分配：按"离敌人距离 0.8 + 朝向 0.1 + 血量 0.1"打分，得分最高的 3 台分别担任 `Attack` / `Support-1` / `Support-2`（不足 3 台时全部为 `Attack`）。
+2. 目标选择：`Attack` 与 `Support-1` 集火威胁度最高的敌人，`Support-2` 优先补刀残血敌人。
+3. 战术选择：按双方总血量比切换 `aggressive` / `balanced` / `defensive`。
+4. 人数分支：己方人数占优 → 追击；人数劣势 → 一车进攻、其余撤退；持平 → 平衡推进。
+5. 血量低于 20 → 最高优先级撤退（`RETREAT`）。
+
 ### 参数配置
 
 Manager 通过 `config/manager/red_manager.yaml`（或 `blue_manager.yaml`）加载参数：
 
 ```yaml
 team_color: "red"
-my_cars: ["robot_red"]   # 本阵营管理的小车命名空间列表
-loop_hz: 1.0             # 决策频率 (Hz)
-state_timeout_s: 5.0     # 超过此秒数未收到小车状态则标记失联
-default_patrol_points:   # LLM 不可用时的默认巡逻点
-  - [0.5, 0.0]
-  - [1.0, 1.0]
+my_cars: ["robot_red1", "robot_red2", "robot_red3"]  # 本阵营管理的小车命名空间列表
+loop_hz: 20.0            # 决策频率 (Hz)
+state_timeout_s: 2.0     # 超过此秒数未收到小车状态则标记失联
+default_patrol_points: []  # 为空时使用 LLMClient 内置的默认巡逻点
 llm:
-  enabled: false         # true 时调用真实 LLM API
-  model: "gpt-4o-mini"
-  timeout_s: 8
+  enabled: false         # true 时调用 LLM 规划服务
+  service_url: "http://127.0.0.1:8001/plan"   # 蓝方使用 8002
+  timeout_s: 30
 ```
 
 ### 启动
@@ -223,9 +232,13 @@ roslaunch robot_vs cars.launch
 
 | Skill | 文件 | 触发条件 | 行为 |
 |-------|------|----------|------|
-| `GoToSkill` | `goto_skill.py` | `action_type = "GOTO"` | 向 `/<ns>/move_base_simple/goal` 发布目标点；监听 `/<ns>/move_base/result` 判断到达 |
-| `StopSkill` | `stop_skill.py` | `action_type = "STOP"` | 向 `/<ns>/cmd_vel` 发布零速度 Twist；立即返回 SUCCESS |
-| `AttackSkill` | `attack_skill.py` | `action_type = "ATTACK"` | 先停车，再计算目标方位，发布 `cmd_vel` 转向瞄准，模拟攻击延时后返回 SUCCESS |
+| `GoToSkill` | `goto_skill.py` | `action_type = "GOTO"` | 纯 `cmd_vel` 导航：先原地转向目标，再直行前进，距离小于容差后刹车并返回 SUCCESS |
+| `StopSkill` | `stop_skill.py` | `action_type = "STOP"` | 取消 move_base 目标并向 `/<ns>/cmd_vel` 发布零速度 Twist；立即返回 SUCCESS |
+| `AttackSkill` | `attack_skill.py` | `action_type = "ATTACK"` | 转向目标并保持追击前进；瞄准误差进入容差即按 `fire_cooldown_s` 冷却发布 `FireEvent`，命中判定由裁判完成 |
+| `RotateSkill` | `rotate_skill.py` | `action_type = "ROTATE"` | 原地旋转到 `target_yaw`，误差进入 `yaw_tolerance` 后返回 SUCCESS |
+| `RetreatSkill` | `retreat_skill.py` | `action_type = "RETREAT"` | 朝远离敌人的撤退点移动，到达或超时后结束 |
+
+> `AttackSkill` 是**持续型**技能：只要还能看到位姿就保持 RUNNING 并反复开火，靠 `TaskCommand.timeout` 与 Manager 的下一轮决策来收尾。
 
 ### mode 字段
 
@@ -243,18 +256,22 @@ roslaunch robot_vs cars.launch
 
 ### TaskCommand（Manager → Car）
 
-**话题：** `/<ns>/task_cmd`  
+**话题：** `/<ns>/car_task`  
 **文件：** `msg/TaskCommand.msg`
 
 ```
-uint32  task_id       # 任务流水号（递增，相同 ID = 同一任务）
-string  action_type   # 动作类型：GOTO / STOP / ATTACK
+uint32  task_id       # 任务流水号（递增，内容相同的任务复用同一 ID）
+string  action_type   # 动作类型：GOTO / STOP / ATTACK / ROTATE / RETREAT
 string  reason        # LLM 给出的战术意图（仅供日志记录）
 float32 target_x      # 目标 X 坐标（GOTO 终点 / ATTACK 瞄准点）
 float32 target_y      # 目标 Y 坐标
+float32 target_yaw    # ROTATE 的目标朝向（弧度）
 uint8   mode          # 期望模式：0 待机 / 1 巡逻 / 2 攻击
 float32 timeout       # 任务超时时间 (秒)，超时自动取消
 ```
+
+> `task_id` 去重只对**仍在执行（RUNNING）**的任务生效；任务进入 SUCCESS / FAILED 后，
+> 相同 `task_id` 的任务可以被重新下发，避免小车超时后永久停在原地。
 
 ### RobotState（Car → Manager）
 
@@ -278,6 +295,7 @@ bool    in_combat
 # 运动学状态
 geometry_msgs/Pose  pose
 geometry_msgs/Twist twist
+float32 yaw
 
 # 任务执行反馈（Manager 闭环控制的核心）
 uint32  current_task_id   # 正在执行或刚完成的任务 ID
@@ -303,15 +321,20 @@ uint8   mode              # 当前物理模式
 每辆小车的所有话题都挂载在其专属的命名空间下，实现多机话题隔离：
 
 ```
-/robot_red/task_cmd          ← Manager 下发任务
+/robot_red/car_task          ← Manager 下发任务
 /robot_red/robot_state       → Manager 接收反馈
 /robot_red/move_base_simple/goal
 /robot_red/cmd_vel
 /robot_red/odom
 /robot_red/amcl_pose
 /robot_red/move_base/result
+/robot_red/fire_event
 
-/robot_blue/task_cmd
+# 说明：move_base_simple/goal 发布器由 SkillManager 保留，当前 GoToSkill 走 cmd_vel，
+#       该话题仅作为后续接入 move_base 时的预留接口。
+/robot_red/move_base_simple/goal
+
+/robot_blue/car_task
 /robot_blue/robot_state
 ...
 ```
@@ -345,3 +368,73 @@ uint8   mode              # 当前物理模式
   - 所有机器人与上位机共用 **同一个 rosmaster**
   - 主机（上位机 / 管理机）与从机（车载计算单元）在 **同一局域网** 内通信
   - 继续沿用仿真中的 **命名空间 + TF 前缀** 设计，保证多车并行运行与话题隔离
+
+---
+
+## 10. 比赛状态机与裁判判定
+
+### 状态流转
+
+```
+IDLE ──start──▶ PLAYING ──一方全灭 / 超时──▶ FINISHED ──reset──▶ IDLE
+  ▲                                            │
+  └──────────────── stop ──────────────────────┘
+```
+
+裁判节点（`referee_node.py`）持有唯一的比赛状态，并通过 `/game/state`（`GameState`）以 10 Hz 广播；
+Manager 订阅该话题，**只有 `PLAYING` 状态才会进入规划循环**：
+
+| 状态 | Manager 行为 |
+|------|--------------|
+| `IDLE` | 先补发一次 `STOP`（避免残留任务让车继续跑），随后空转等待 |
+| `PLAYING` | 正常执行 观测 → 规划 → 分发 循环 |
+| `FINISHED` | 持续向本方所有小车下发 `STOP` |
+
+### 控制指令
+
+裁判订阅 `/game/command`（`std_msgs/String`），支持三条指令：
+
+```bash
+# 开始比赛
+rostopic pub -1 /game/command std_msgs/String "data: 'start'"
+# 中止比赛（回到 IDLE）
+rostopic pub -1 /game/command std_msgs/String "data: 'stop'"
+# 复位：恢复所有已发现机器人的 HP/弹药，并回到 IDLE
+rostopic pub -1 /game/command std_msgs/String "data: 'reset'"
+```
+
+### 结束条件
+
+| 条件 | `winner` | `reason` |
+|------|----------|----------|
+| 一方全部阵亡 | 存活方 | `all_enemy_dead` |
+| 双方同时全灭 | `draw` | `all_dead` |
+| 到达 `time_limit_s` | 剩余总血量高的一方，同分则 `draw` | `timeout` |
+
+> 双方都还没有被裁判发现（各自 `total > 0` 之前）不会判定，避免开场瞬间结束。
+> `time_limit_s: 0`（默认）表示不限时，只按"一方全灭"结束。
+
+### 自动开赛
+
+默认需要手动发一次 `start`。若希望启动即开赛，可二选一：
+
+```bash
+# 方式一：启动时通过 launch 参数打开
+roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true
+
+# 方式二：把 config/manager/referee.yaml 里的 auto_start 改为 true
+#        （launch 参数为 false 时不会覆盖 YAML，两者取“或”的效果）
+```
+
+### 命中判定
+
+| 参数 | 含义 |
+|------|------|
+| `fire_range` | 最大射程，超过则不开火判定 |
+| `hit_width` | 射线命中半宽（到弹道中心线的垂距阈值） |
+| `fire_damage` | 单发伤害 |
+| `vision_range` / `fov_deg` | 可见敌人的距离与视野角 |
+| `occ_threshold` / `block_unknown` | 栅格地图遮挡判定阈值，未知区域是否算障碍 |
+
+每次收到的 `FireEvent` 会先结算 1 发弹药，再用 `Bresenham` 直线在 `/map` 上做视线遮挡检查，
+最后对射程内、位于射线 `hit_width` 范围内的敌方小车扣血。

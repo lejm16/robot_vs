@@ -86,6 +86,8 @@ class TeamManager(object):
 
         # ====== 比赛状态同步 ======
         self._game_status = "IDLE"
+        # 进入 IDLE 时是否还需要补发一次 STOP（避免残留任务让车继续跑）
+        self._idle_stop_pending = True
         self._game_state_sub = rospy.Subscriber(
             "/game/state", GameState, self._on_game_state, queue_size=10
         )
@@ -207,30 +209,21 @@ class TeamManager(object):
         return fallback
 
     def _on_game_state(self, msg):
-        """比赛状态回调，防止从 PLAYING 回退到 IDLE"""
+        """比赛状态回调。裁判是比赛状态的唯一权威来源，直接跟随其发布的状态。"""
         new_status = str(msg.status)
-        # 防止错误覆盖：如果当前是 PLAYING，不接受 IDLE
-        if self._game_status == "PLAYING" and new_status == "IDLE":
-            rospy.logwarn_throttle(1.0, "[%s] 忽略状态回退: %s -> %s", self.team_color, self._game_status, new_status)
-            return
+        if new_status != self._game_status:
+            rospy.loginfo(
+                "[%s] game_status: %s -> %s", self.team_color, self._game_status, new_status
+            )
+            if new_status == "IDLE":
+                # 比赛被中止/复位：下一次循环补发 STOP
+                self._idle_stop_pending = True
         self._game_status = new_status
 
     def _send_stop_to_all(self, reason="match_ended"):
         """给所有小车发 STOP"""
         for ns in self.my_cars:
-            task = {
-                "action": "STOP",
-                "target": {"x": 0.0, "y": 0.0, "yaw": 0.0},
-                "mode": 0,
-                "reason": reason,
-                "timeout": 2.0,
-            }
-            try:
-                pub = self.dispatcher._ensure_publisher(ns)
-                msg = self.dispatcher._build_task_msg(ns, task)
-                pub.publish(msg)
-            except Exception as exc:
-                rospy.logwarn("stop failed for %s: %s", ns, exc)
+            self.dispatcher.send_stop(ns, reason)
         rospy.loginfo("[%s] STOP sent to %d robots (reason=%s)",
                       self.team_color, len(self.my_cars), reason)
 
@@ -299,24 +292,29 @@ class TeamManager(object):
         state = self.observer.get_battle_state()
 
         # 2. 从 state 中提取存活车辆列表
+        #    GlobalObserver.get_battle_state() 返回的是 dict：
+        #    {"friendly": {ns: {"state": {...}, "stamp": .., "stale": bool}}, ...}
+        friendly = state.get("friendly", {}) if isinstance(state, dict) else {}
         alive_cars = []
-        # 假设 state 中有 my_team.cars 或类似结构
-        # 如果没有，可以尝试遍历 self.my_cars 并从 state 中查找存活状态
-        if hasattr(state, 'my_team') and hasattr(state.my_team, 'cars'):
-            for car in state.my_team.cars:
-                if getattr(car, 'alive', True):
-                    alive_cars.append(getattr(car, 'id', ''))
-        else:
-            # 兼容旧结构：直接从 self.my_cars 过滤（但需要从 state 中获取存活信息）
-            # 这里简化为假设所有车都存活（不推荐）
-            # 更好的做法是使用 self.observer 中的最新数据
-            alive_cars = self.my_cars[:]
+        for ns in self.my_cars:
+            record = friendly.get(ns)
+            car_state = record.get("state") if isinstance(record, dict) else None
+            if not isinstance(car_state, dict):
+                # 尚未收到该车状态：先按存活处理，交由超时/失联逻辑兜底
+                alive_cars.append(ns)
+                continue
+            try:
+                hp = float(car_state.get("hp", 100.0))
+            except (TypeError, ValueError):
+                hp = 100.0
+            if bool(car_state.get("alive", True)) and hp > 0.0:
+                alive_cars.append(ns)
 
         # 如果没有任何存活车辆，发送 STOP 并终止决策
         if not alive_cars:
             rospy.logwarn("[%s] 所有车辆已阵亡，停止决策", self.team_color)
             for ns in self.my_cars:
-                self.dispatcher._send_stop(ns, "all_dead")
+                self.dispatcher.send_stop(ns, "all_dead")
             return {}
 
         # 临时将 self.my_cars 替换为存活列表，以便后续组件使用
@@ -404,10 +402,15 @@ class TeamManager(object):
 
             # 比赛未开始：空转等待（取消注释）
             if self._game_status == "IDLE":
+                # 未开赛或已中止：补发一次 STOP 后空转等待
+                if self._idle_stop_pending:
+                    self._send_stop_to_all("game_idle")
+                    self._idle_stop_pending = False
                 rate.sleep()
                 continue
 
             # _game_status == "PLAYING": 正常规划
+            self._idle_stop_pending = True
             try:
                 self.run_cycle()
             except Exception as exc:
