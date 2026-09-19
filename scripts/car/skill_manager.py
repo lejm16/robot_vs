@@ -33,7 +33,16 @@ class SkillManager(object):
         self._lock = threading.RLock()
 
         self.nav_status_code = -1  # -1 表示尚未收到导航结果
-        self._latest_pose = None
+        # 位姿来源：amcl_pose（地图系，优先）与 odom（里程计，兜底）
+        # 之前 odom 只在第一次被采用（_latest_pose is None 时），一旦 amcl 没起来，
+        # 上报的位姿就永久冻结在出生点，裁判那边所有车都在 (0,0)，永远打不中。
+        self._latest_pose = None        # 当前生效的位姿（兼容旧引用）
+        self._amcl_pose = None
+        self._amcl_pose_stamp = None
+        self._odom_pose = None
+        self._odom_pose_stamp = None
+        self._pose_source_timeout_s = float(rospy.get_param("~pose_source_timeout_s", 2.0))
+        self._pose_warn_stamp = 0.0
         self._latest_twist = Twist()
         self._map_info = None
 
@@ -235,14 +244,50 @@ class SkillManager(object):
             }
 
     def _odom_cb(self, msg):
+        now = rospy.Time.now().to_sec()
         with self._lock:
             self._latest_twist = msg.twist.twist
-            if self._latest_pose is None:
-                self._latest_pose = msg.pose.pose
+            self._odom_pose = msg.pose.pose
+            self._odom_pose_stamp = self._msg_stamp(msg, now)
 
     def _amcl_pose_cb(self, msg):
+        now = rospy.Time.now().to_sec()
         with self._lock:
-            self._latest_pose = msg.pose.pose
+            self._amcl_pose = msg.pose.pose
+            self._amcl_pose_stamp = self._msg_stamp(msg, now)
+
+    @staticmethod
+    def _msg_stamp(msg, fallback):
+        """取消息头时间戳，取不到或为 0 时用当前时间。"""
+        try:
+            stamp = msg.header.stamp.to_sec()
+        except Exception:
+            return fallback
+        return stamp if stamp > 0.0 else fallback
+
+    def _resolve_pose(self):
+        """选出当前可用的位姿：amcl 新鲜就用 amcl，否则退回 odom。
+
+        调用方需已持有 self._lock（get_current_pose / _publish_robot_state 都持锁）。
+        """
+        now = rospy.Time.now().to_sec()
+        if (self._amcl_pose is not None
+                and self._amcl_pose_stamp is not None
+                and (now - self._amcl_pose_stamp) <= self._pose_source_timeout_s):
+            return self._amcl_pose
+
+        if self._odom_pose is not None:
+            if now - self._pose_warn_stamp > 10.0:
+                self._pose_warn_stamp = now
+                rospy.logwarn(
+                    "[%s] 没有可用的 amcl_pose，先用 odom 位姿参与决策与裁判判定。"
+                    "请检查 map_server(/map)、amcl(/%s/amcl_pose)、/%s/scan 与 tf "
+                    "(map -> %s/odom -> %s/base_footprint)。",
+                    self.ns, self.ns, self.ns, self.ns, self.ns,
+                )
+            return self._odom_pose
+
+        return None
 
     def _extract_self_macro_state(self, team_state):
         if team_state is None:
@@ -378,13 +423,13 @@ class SkillManager(object):
 
     def get_current_pose(self):
         with self._lock:
+            self._latest_pose = self._resolve_pose()
             return self._latest_pose
-            
+
     def get_current_yaw(self):
-        with self._lock:
-            pose = self._latest_pose
+        pose = self.get_current_pose()
         if pose is None:
-             return None
+            return None
         q = pose.orientation
         _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
         return yaw
@@ -412,9 +457,11 @@ class SkillManager(object):
             msg.hp = float(self.hp)
             msg.ammo = float(self.ammo)
             msg.alive = bool(self.is_alive)
-            if self._latest_pose is not None:
-                msg.pose = self._latest_pose
-                q = self._latest_pose.orientation
+            pose = self._resolve_pose()
+            self._latest_pose = pose
+            if pose is not None:
+                msg.pose = pose
+                q = pose.orientation
                 _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
                 msg.yaw = float(yaw)
             msg.twist = self._latest_twist
