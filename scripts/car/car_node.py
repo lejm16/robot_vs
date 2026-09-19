@@ -39,10 +39,10 @@ class CarAgent(object):
         self.task_engine = task_engine if task_engine is not None else TaskEngine(self.ns, self.skill_manager)
 
         self._task_sub = rospy.Subscriber(
-             "/{}/car_task".format(self.ns),
-    	     TaskCommand,
-             self._task_cmd_cb,
-             queue_size=10,
+            "/{}/car_task".format(self.ns),
+            TaskCommand,
+            self._task_cmd_cb,
+            queue_size=10,
         )
 
         rospy.loginfo(

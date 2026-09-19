@@ -11,6 +11,12 @@
   <arg name="initial_pose_a" default="0"/>
 
   <group ns="$(arg robot_namespace)">
+    <!-- 把 gazebo 插件可能不带前缀的 odom / base_footprint / base_scan 接到带前缀的坐标系上，
+         amcl 才能解析出 map -> <ns>/odom -> <ns>/base_footprint 这条链。
+         坐标系本来就带前缀时它什么都不做。 -->
+    <node pkg="robot_vs" type="tf_bridge.py" name="tf_bridge" output="screen"
+          required="false"/>
+
     <node pkg="amcl" type="amcl" name="amcl" output="screen">
       <!-- 核心参数 -->
       <param name="use_map_topic" value="$(arg use_map_topic)"/>

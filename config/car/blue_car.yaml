@@ -3,8 +3,12 @@ team: 1          # 1代表蓝方
 default_hp: 100.0
 default_ammo: 50.0
 
-# 导航方式：true 用 move_base 规划（会绕开墙和障碍，需要 amcl + map + scan 正常）
-#          false 退化成“原地转向 + 直行”的纯 cmd_vel 驾驶，无避障，仅调试用
+# 导航方式：
+#   true  = 交给 move_base 规划（绕障最好，但要求 map + amcl + scan + tf 全链路正常；
+#           如果 amcl 没定位成功，move_base 会一直走 recovery 原地自转，车就不动了）
+#   false = 直接用小车自己的“比例转向 + 激光绕障”开（skills/steering.py），不依赖定位
+# 注意：即使这里是 true，一旦 move_base 连续失败，也会自动降级成 false 的跑法 60 秒，
+#       所以不会因为定位坏掉而整场比赛卡死。
 use_move_base: true
-# move_base 在这段时间内没结果、车也没动，就判失败并提示检查定位链路
-nav_wait_s: 5.0
+# move_base 在这段时间内没结果、车也没动，就判定失败并自动降级
+nav_wait_s: 3.0

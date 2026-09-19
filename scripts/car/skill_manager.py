@@ -52,6 +52,7 @@ class SkillManager(object):
         self._latest_scan = None
         self._latest_scan_stamp = None
         self._scan_timeout_s = float(rospy.get_param("~scan_timeout_s", 1.0))
+        self._nav_fallback_until = 0.0
 
         self.active_skill = None
         self.active_action = "NONE"
@@ -434,6 +435,7 @@ class SkillManager(object):
         new_alive = bool(alive and hp > 0.0)
 
         just_died = False
+        came_back = False
         with self._lock:
             prev_alive = bool(self.is_alive)
 
@@ -445,10 +447,17 @@ class SkillManager(object):
             if prev_alive and (not new_alive) and (not self._dead_latched):
                 self._dead_latched = True
                 just_died = True
+            # 复活（比如裁判自动复位开下一局）：解锁死亡锁存，否则第二局再死一次
+            # 就不会再执行 cancel + 持续刹车了
+            elif (not prev_alive) and new_alive and self._dead_latched:
+                self._dead_latched = False
+                came_back = True
 
         # 注意：不要在锁内做 stop/cancel（避免潜在死锁）
         if just_died:
             self._enter_dead_state()
+        elif came_back:
+            rospy.loginfo("[%s] 检测到复活（裁判复位），清除死亡锁存", self.ns)
 
     # ------------------------------------------------------------------
     # 技能生命周期与工厂
@@ -554,6 +563,20 @@ class SkillManager(object):
     def get_map_info(self):
         with self._lock:
             return self._map_info
+
+    # ------------------------------------------------------------------
+    # move_base 失联时的降级开关
+    # ------------------------------------------------------------------
+    def activate_nav_fallback(self, duration_s=60.0):
+        """move_base 连续失败时，把这台车切到“自带绕障直行”一段时间。"""
+        self._nav_fallback_until = rospy.Time.now().to_sec() + float(duration_s)
+        rospy.logwarn(
+            "[%s] move_base 不可用（多半是 amcl/地图/TF 链路问题），"
+            "本车改用自带激光绕障直行 %.0f 秒", self.ns, duration_s,
+        )
+
+    def nav_fallback_active(self):
+        return rospy.Time.now().to_sec() < self._nav_fallback_until
 
     # ------------------------------------------------------------------
     # RobotState 发布

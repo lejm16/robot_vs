@@ -240,6 +240,11 @@ roslaunch robot_vs cars.launch
 | `RetreatSkill` | `retreat_skill.py` | `action_type = "RETREAT"` | 朝远离敌人的撤退点移动，到达或超时后结束 |
 
 > `AttackSkill` 是**持续型**技能：只要还能看到位姿就保持 RUNNING 并反复开火，靠 `TaskCommand.timeout` 与 Manager 的下一轮决策来收尾。
+>
+> GOTO 的直行回退模式与 ATTACK 追击共用 `skills/steering.py` 里的 `AvoidanceSteering`：
+> 比例转向 + "朝目标的射线被挡就沿固定绕行航向直行"。**绕行航向必须固定在
+> 世界坐标系**——若每帧都追"当前目标方位 ±90°"，目标方位会随车头一起转，
+> 车就会陷入无限自转（这正是"车只在原地转、不往前走"的成因）。
 
 ### mode 字段
 
@@ -415,6 +420,31 @@ rostopic pub -1 /game/command std_msgs/String "data: 'reset'"
 > 双方都还没有被裁判发现（各自 `total > 0` 之前）不会判定，避免开场瞬间结束。
 > `time_limit_s: 0`（默认）表示不限时，只按"一方全灭"结束。
 
+### 自动复位
+
+`config/manager/referee.yaml` 里默认开启：
+
+```yaml
+auto_reset: true          # 一局结束后自动复位并开下一局
+auto_reset_delay_s: 6.0   # 结束后停留几秒（留出观战时间）
+auto_restart: true        # 复位后直接 PLAYING；false = 停在 IDLE 等人手动 start
+reset_mode: "gazebo"      # gazebo = 把车搬回出生点；stats_only = 只回血不挪车
+spawn_poses:              # 复位时各车的目标位姿（改了 launch 初始位姿要同步改）
+  robot_red1: [-2.5, 1.5, -1.5708]
+  ...
+```
+
+复位做三件事，缺一不可：
+
+1. **回血回弹药**：把 `global_states` 里所有车的 `hp/ammo/alive` 恢复默认值；
+2. **送回出生点**：调 Gazebo 的 `/gazebo/set_model_state` 把模型搬回 `spawn_poses`
+   （Gazebo 模型名与 ROS 命名空间同名，所以直接用 `robot_red1` 这样的名字即可）。
+   不在仿真里、或拿不到该服务时，会打印一次告警并退化成"只回血不挪车"；
+3. **让 AMCL 重新定位**：向 `/<ns>/initialpose` 重发一次出生位姿。
+
+对应的车端配合：`SkillManager` 在检测到"死 → 活"的跳变时会清除死亡锁存
+（`_dead_latched`），否则第二局再阵亡就不会触发 `cancel move_base + 持续刹车` 了。
+
 ### 自动开赛
 
 默认需要手动发一次 `start`。若希望启动即开赛，可二选一：
@@ -518,3 +548,33 @@ map_server ──/map───────────────────�
 （默认 `-3.9 / 3.9 / -1.9 / 1.9`）会把每一个下发目标点夹进场地内。
 这样即使策略层给出了场外的巡逻点或撤退点，小车也不会去撞墙，日志里会打印
 `目标点 ... 超出场地，已夹到 ...`。
+
+### 坐标系前缀与 tf_bridge
+
+多机仿真里每台车的 TF 必须带前缀（`robot_red1/odom`、`robot_red1/base_footprint`、
+`robot_red1/base_scan`），否则 6 台车会互相覆盖同一组坐标系，
+amcl 也就凑不出 `map → <ns>/odom → <ns>/base_footprint` 这条链，
+表现为 amcl 不出 `amcl_pose`、move_base 一直执行 recovery 原地自转。
+
+但 turtlebot3 原版 URDF 里的 gazebo 插件用的是 `odom / base_footprint / base_scan`
+这类不带前缀的名字（是否自动补前缀取决于插件版本与 `<robotNamespace>` 设置）。
+`scripts/car/tf_bridge.py`（与 amcl 一起在每台车的 namespace 下启动）负责兜住两种情况：
+
+1. 读 `/<ns>/odom` 的 `header.frame_id` / `child_frame_id` 与 `/<ns>/scan` 的
+   `header.frame_id`，原样打印，便于确认插件实际用哪套名字；
+2. 只在实际名字不等于期望的带前缀名字时，发一条 identity 静态变换补上缺口：
+   `robot_xx/odom -> odom`、`base_footprint -> robot_xx/base_footprint`、
+   `robot_xx/base_scan -> base_scan`。名字本来带前缀时什么都不发，避免 TF 成环。
+
+### 导航降级（move_base 失败自动切直行）
+
+`GoToSkill` 默认优先用 move_base，但出现下面两种情况时：
+
+- `nav_wait_s`（默认 3 s）内既没有 `move_base/result`、车也没有位移；
+- move_base 返回 ABORTED / REJECTED / LOST；
+
+会打印排查提示（map / amcl / scan / tf 四件事），并调用
+`SkillManager.activate_nav_fallback()` 把这台车切到 `skills/steering.py`
+的激光绕障直行 **60 秒**。Manager 下一轮重发同一个 GOTO 时，该车就走直行路线继续执行。
+
+这样定位链路即使完全不可用，比赛仍然能打，只是路径不如 move_base 聪明。

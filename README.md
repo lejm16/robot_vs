@@ -56,7 +56,10 @@ rostopic pub -1 /game/command std_msgs/String "data: 'start'"
 > 想省掉第 4 步可以加 `auto_start:=true`：
 > `roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true`
 >
-> 比赛结束后可复位再来一局：`rostopic pub -1 /game/command std_msgs/String "data: 'reset'"`
+> 比赛结束后**默认会自动复位并开下一局**（`config/manager/referee.yaml` 的 `auto_reset: true`，
+> 停留 6 秒再复位）。想手动控制就发：
+> `rostopic pub -1 /game/command std_msgs/String "data: 'reset'"`（复位）
+> 或 `"data: 'stop'"`（停到 IDLE）。
 >
 > 若只想起单条链路做调试：`roslaunch robot_vs managers.launch`（红蓝两个 Manager 都会启动）
 > 加 `roslaunch robot_vs cars.launch`（红蓝各一辆小车）。
@@ -112,6 +115,7 @@ python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
 | 里程计 | `rostopic hz /robot_red1/odom` | 稳定出数据 |
 | 定位 | `rostopic hz /robot_red1/amcl_pose` | 稳定出数据 |
 | TF 链 | `rosrun tf tf_echo map robot_red1/base_footprint` | 能打变换 |
+| TF 前缀 | 启动日志里的 `[tf_bridge/robot_red1] 实际坐标系: ...` | 看 gazebo 插件用的是带前缀还是不带前缀的坐标系 |
 | 任务下发 | `rostopic echo /robot_red1/car_task` | 出现 GOTO / ATTACK |
 | 机器人上报 | `rostopic echo -n1 /robot_red1/robot_state` | 坐标不是 (0,0) 且随车变化 |
 | 比赛状态 | `rostopic echo /game/state` | `status: "PLAYING"` |
@@ -121,9 +125,27 @@ python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
 | 现象 | 多半是 | 处理 |
 |------|--------|------|
 | 车完全不动，日志里出现 `GoToSkill: ... move_base 没有返回结果、车也没有移动` | 地图 / 定位 / 话题名断了 | 按上表逐项排查；应急可在 `config/car/*.yaml` 里把 `use_move_base` 设为 `false`（纯 cmd_vel 直行，无避障，仅验证用） |
+| **车只在原地打转、不往前走** | move_base 全局规划一直失败，进入 recovery 的"原地自转"（最常见是 amcl 没定位成功 → 缺 `map→odom` 的 TF） | 现在已经会自动降级：日志里会出现 `本车接下来会自动改用自带激光绕障直行`。若降级后还不走，看 `tf_bridge` 打印的实际坐标系名字 |
 | 所有车坐标都是 (0,0)，裁判永远打不中 | `/<ns>/odom`、`/<ns>/amcl_pose` 收不到数据 | 确认 gazebo 插件的话题是不是带命名空间（`rostopic list \| grep -E 'cmd_vel\|odom\|scan'`） |
 | 车往场外/墙里开 | 目标点在场地外 | 检查 `arena_*` 参数；`TaskDispatcher` 会自动夹目标点并打印 `超出场地，已夹到` |
 | 双方互相看不见 | 视野太小 | `config/manager/referee.yaml` 的 `vision_range`（默认 3.5 m）与 `fov_deg` |
+
+### 定位链路与两条导航路线
+
+每台车的 GOTO 有两条路线，代码会自动选：
+
+| 路线 | 触发条件 | 依赖 |
+|------|----------|------|
+| move_base 规划 | `use_move_base: true`（默认） | `map_server` + `amcl` + `/scan` + TF 全链路 |
+| 自带激光绕障直行（`skills/steering.py`） | `use_move_base: false`，或 move_base 连续失败自动降级 | 只需要 `/odom` 和 `/scan` |
+
+move_base 失败时会**自动降级 60 秒**，所以定位坏掉也不会让整场比赛卡死，日志会说明原因。
+
+另外为定位链路加了 `scripts/car/tf_bridge.py`：多机仿真里每台车的 TF 必须带前缀
+（`robot_red1/odom`、`robot_red1/base_footprint` …），而 turtlebot3 原版 URDF 的
+gazebo 插件可能用的是**不带前缀**的 `odom / base_footprint / base_scan`。
+该节点会读 `/odom` 与 `/scan` 报文里真实的坐标系名字并打印出来，且**只在不匹配时**
+补一条 identity 静态变换把两边接起来（匹配时不发，避免 TF 成环）。
 
 ---
 
@@ -133,6 +155,21 @@ python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
 |------|------|
 | [环境配置](INSTALL.md) | 虚拟机搭建、ROS 安装、项目部署全流程 |
 | [技术原理](TECHNICAL.md) | 系统架构、Manager/Car/Skill 详解、ROS 消息流、数据流图、比赛状态机与裁判判定 |
+
+---
+
+## 观战（RViz）
+
+3V3 仿真启动时会自动打开 `rviz/multi_robot.rviz`，里面已经配好：
+
+- `/map` 全局地图（Fixed Frame = `map`）
+- 6 台车的 `RobotModel` 与 `LaserScan`（`robot_red1..3` / `robot_blue1..3`）
+- `/health_markers`（血条）、`/chassis_markers`（底盘颜色）、`/trajectory_markers`（弹道）
+
+> 之前这份配置用的是旧的四车命名空间（`robot_red` / `robot_blue`），
+> 在 3V3 里车模型和雷达都不显示，已对齐到六车。
+> 想加回 move_base 的代价地图/路径显示时，照着现有的
+> `Global Map [Red1]` 块复制，把话题里的 `robot_red1` 换成目标车即可。
 
 ---
 

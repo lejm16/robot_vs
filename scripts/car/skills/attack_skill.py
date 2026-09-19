@@ -8,6 +8,7 @@ from geometry_msgs.msg import Twist
 from tf.transformations import euler_from_quaternion
 
 from skills.base_skill import BaseSkill, RUNNING, FAILED
+from skills.steering import AvoidanceSteering
 
 
 class AttackSkill(BaseSkill):
@@ -52,15 +53,11 @@ class AttackSkill(BaseSkill):
         self.fire_cooldown_s = 2.0
         self.pose_lost_timeout_s = 1.5
         self.obstacle_stop_distance = 0.5
-        self.obstacle_sector_deg = 30.0
-        self.detour_hold_s = 0.8
 
         self._last_fire_ts = None
         self._start_ts = None
         self._last_pose_ts = None
-        self._no_scan_warned = False
-        self._detour_until_ts = None
-        self._detour_dir = 1.0
+        self._steering = None
 
     def start(self, params=None):
         params = params or {}
@@ -83,15 +80,22 @@ class AttackSkill(BaseSkill):
             "~attack_fire_cooldown", params.get("fire_cooldown_s", 2.0)))
         self.pose_lost_timeout_s = float(params.get("pose_lost_timeout_s", 1.5))
         self.obstacle_stop_distance = float(rospy.get_param("~attack_obstacle_stop", 0.5))
-        self.obstacle_sector_deg = abs(float(rospy.get_param("~attack_obstacle_sector", 30.0)))
-        self.detour_hold_s = float(rospy.get_param("~attack_detour_hold", 0.8))
 
         self._last_fire_ts = None
         self._start_ts = rospy.Time.now().to_sec()
         self._last_pose_ts = None
-        self._no_scan_warned = False
-        self._detour_until_ts = None
-        self._detour_dir = 1.0
+
+        # 追击用统一的“比例转向 + 绕障”控制律（详见 skills/steering.py）
+        self._steering = AvoidanceSteering(
+            self.skill_manager,
+            speed=self.attack_speed,
+            max_angular=self.max_angular_speed,
+            align_gain=self.align_gain,
+            lookahead=float(rospy.get_param("~attack_lookahead", 1.1)),
+            front_stop=self.obstacle_stop_distance,
+            target_sector_deg=25.0,
+        )
+        self._steering.reset()
         self._status = RUNNING
 
         rospy.loginfo(
@@ -126,7 +130,8 @@ class AttackSkill(BaseSkill):
 
         q = pose.orientation
         _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
-        err = self._normalize_angle(math.atan2(dy, dx) - yaw)
+        desired_yaw = math.atan2(dy, dx)
+        err = self._normalize_angle(desired_yaw - yaw)
 
         cmd = Twist()
 
@@ -137,73 +142,39 @@ class AttackSkill(BaseSkill):
                 self.skill_manager.publish_cmd_vel(cmd)
             else:
                 self.skill_manager.publish_stop_velocity()
-            self._try_fire(pose, yaw, err, distance, now, front=None)
+            self._try_fire(pose, yaw, err, distance, now)
             self._status = RUNNING
             return self._status
 
-        # ---- 2) 激光保护：前方有障碍就只转向不前进 ----
-        front = self.skill_manager.min_range_in_sector(0.0, self.obstacle_sector_deg)
-        if front is None:
-            if not self._no_scan_warned:
-                self._no_scan_warned = True
-                rospy.logwarn(
-                    "[%s] AttackSkill: 读不到 /%s/scan，无法做避障保护（仍会继续追击）",
-                    self.skill_manager.ns, self.skill_manager.ns,
-                )
-
-        # 正在绕行：这段时间里不再让朝向控制器抢方向盘，否则会原地打转
-        if self._detour_until_ts is not None and now < self._detour_until_ts:
-            cmd.angular.z = self._detour_dir * self.max_angular_speed * 0.8
-            cmd.linear.x = 0.0 if (front is not None and front < 0.35) else self.attack_speed * 0.4
-            self.skill_manager.publish_cmd_vel(cmd)
-            self._status = RUNNING
-            return self._status
-        self._detour_until_ts = None
-
-        if front is not None and front < self.obstacle_stop_distance:
-            left = self.skill_manager.min_range_in_sector(60.0, 35.0)
-            right = self.skill_manager.min_range_in_sector(-60.0, 35.0)
-            left_clear = front if left is None else left
-            right_clear = front if right is None else right
-            self._detour_dir = 1.0 if left_clear >= right_clear else -1.0
-            self._detour_until_ts = now + self.detour_hold_s
-            cmd.linear.x = 0.0
-            cmd.angular.z = self._detour_dir * self.max_angular_speed * 0.8
-            self.skill_manager.publish_cmd_vel(cmd)
-            rospy.logwarn_throttle(
-                1.0, "[%s] AttackSkill: 前方 %.2fm 有障碍，朝%s绕行 %.1fs",
-                self.skill_manager.ns, front,
-                "左" if self._detour_dir > 0 else "右", self.detour_hold_s,
-            )
-            self._status = RUNNING
-            return self._status
-
-        # ---- 3) 正常追击：比例转向 + 前进 ----
-        cmd.angular.z = self._clamp(self.align_gain * err, self.max_angular_speed)
-        if abs(err) > 0.6:
-            cmd.linear.x = 0.0                       # 误差太大先原地对准
-        elif abs(err) > self.yaw_tolerance:
-            cmd.linear.x = self.attack_speed * 0.5   # 一边走一边修方向
-        else:
-            cmd.linear.x = self.attack_speed
+        # ---- 2) 追击：统一的比例转向 + 绕障控制律 ----
+        linear, angular, mode = self._steering.compute(yaw, desired_yaw, distance, now)
+        cmd.linear.x = linear
+        cmd.angular.z = angular
         self.skill_manager.publish_cmd_vel(cmd)
+        rospy.loginfo_throttle(
+            2.0, "[%s] AttackSkill[%s] dist=%.2f err=%.2f lin=%.2f ang=%.2f",
+            self.skill_manager.ns, mode, distance, err, linear, angular,
+        )
 
-        self._try_fire(pose, yaw, err, distance, now, front=front)
+        self._try_fire(pose, yaw, err, distance, now)
         self._status = RUNNING
         return self._status
 
-    def _try_fire(self, pose, yaw, err, distance, now, front=None):
+    def _try_fire(self, pose, yaw, err, distance, now):
         """对准、在射程内、且前方没有遮挡时才开火。"""
         if distance > self.fire_range:
             return
 
-        # 用激光做一次廉价的遮挡预判：前方比目标还近，说明中间隔着东西，别浪费弹药
-        if front is not None and front < distance - 0.2:
+        # 用激光沿“目标方位”做一次遮挡预判：比目标还近说明中间隔着东西，别浪费弹药
+        clearance = self.skill_manager.min_range_in_sector(math.degrees(err), 20.0)
+        if clearance is not None and clearance < distance - 0.25:
             return
 
         allowed = self.fire_angle
         if distance > 0.1 and self.hit_half_width > 0.0:
-            allowed = min(allowed, self.hit_half_width / distance)
+            # 留 20% 余量：裁判判定是“到弹道中心线的垂距 < hit_width”，
+            # 贴着边界开枪很容易刚好落在线外，白费一发弹药。
+            allowed = min(allowed, 0.8 * self.hit_half_width / distance)
         if abs(err) > allowed:
             return
 

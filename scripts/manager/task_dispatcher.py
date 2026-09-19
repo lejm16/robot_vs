@@ -28,6 +28,7 @@ class TaskDispatcher(object):
 		self._task_seq = 0
 		self._last_task_signature = {}
 		self._last_task_id = {}
+		self._last_logged_id = {}
 
 		# 场地边界：所有下发的目标点都会被夹进这个矩形，防止小车往场外开
 		# 默认值对应 worlds/world0.world（围墙 x=±4.05, y=±2.0，留出车身余量）
@@ -194,15 +195,18 @@ class TaskDispatcher(object):
 				msg = self._build_task_msg(ns, task)
 				pub.publish(msg)
 
-				rospy.loginfo(
-					"dispatch ns=%s task_id=%d action=%s target=(%.2f, %.2f) reason=%r",
-					ns,
-					msg.task_id,
-					msg.action_type,
-					msg.target_x,
-					msg.target_y,
-					msg.reason,
-				)
+				# 决策循环 20 Hz，逐帧打印会刷爆 rosout；只在任务真的换了才打一条
+				if self._last_logged_id.get(ns) != msg.task_id:
+					self._last_logged_id[ns] = msg.task_id
+					rospy.loginfo(
+						"dispatch ns=%s task_id=%d action=%s target=(%.2f, %.2f) reason=%r",
+						ns,
+						msg.task_id,
+						msg.action_type,
+						msg.target_x,
+						msg.target_y,
+						msg.reason,
+					)
 			except Exception as exc:
 				rospy.logwarn("dispatch failed for %s: %s", ns, exc)
 

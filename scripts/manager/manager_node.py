@@ -92,8 +92,11 @@ class TeamManager(object):
             "/game/state", GameState, self._on_game_state, queue_size=10
         )
 
-        # ====== 叙事事件（Manager 发到 /game/narrative，Referee 汇总写入文件）======
+        # ====== 叙事事件（发到 /game/narrative，事件式：任务发生变化时才发）======
+        # 说明：仓库里目前没有订阅者，保留这个话题是为了后续接解说/录制；
+        # 决策循环是 20 Hz，所以这里必须做“变化检测”，否则会以 100+ msg/s 空刷。
         self._narrative_pub = rospy.Publisher("/game/narrative", String, queue_size=100)
+        self._narrative_signature = None
 
         # ====== 决策统计（用于调试） ======
         self._decision_count = 0
@@ -344,6 +347,11 @@ class TeamManager(object):
 
     def _publish_narrative_events(self, tasks):
         """发布叙事事件到 /game/narrative"""
+        signature = self._task_signature(tasks)
+        if signature == self._narrative_signature:
+            return
+        self._narrative_signature = signature
+
         team_text = self._to_text(self.team_color, u"")
 
         # 1) 发布 Leader 战略理由（如果有）
@@ -387,6 +395,32 @@ class TeamManager(object):
                     "reason": reason,
                 },
             )
+
+    @staticmethod
+    def _task_signature(tasks):
+        """把任务字典压成可比较的元组，用来判断这一轮任务有没有变化。"""
+        if not isinstance(tasks, dict):
+            return ()
+        items = []
+        for ns, task in tasks.items():
+            if not isinstance(task, dict):
+                continue
+            target = task.get("target")
+            if not isinstance(target, dict):
+                target = {}
+            try:
+                target_x = round(float(target.get("x", 0.0)), 2)
+                target_y = round(float(target.get("y", 0.0)), 2)
+            except (TypeError, ValueError):
+                target_x, target_y = 0.0, 0.0
+            items.append((
+                str(ns),
+                str(task.get("action", "STOP")).upper(),
+                target_x,
+                target_y,
+                str(task.get("reason", "")),
+            ))
+        return tuple(sorted(items))
 
     def run(self):
         """主循环"""

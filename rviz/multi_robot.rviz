@@ -5,21 +5,21 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /RobotModel [Blue]1
-        - /LaserScan [Red]1
-        - /LaserScan [Blue]1
-        - /Global Map [Red]1/Costmap1
-        - /Global Map [Red]1/Planner1
-        - /Local Map [Red]1/Costmap1
-        - /Local Map [Red]1/Planner1
+        - /RobotModel [Blue1]1
+        - /LaserScan [Red1]1
+        - /LaserScan [Blue1]1
+        - /Global Map [Red1]1/Costmap1
+        - /Global Map [Red1]1/Planner1
+        - /Local Map [Red1]1/Costmap1
+        - /Local Map [Red1]1/Planner1
         - /Global Map [Red2]1/Costmap1
         - /Global Map [Red2]1/Planner1
         - /Local Map [Red2]1/Costmap1
         - /Local Map [Red2]1/Planner1
-        - /Global Map [Blue]1/Costmap1
-        - /Global Map [Blue]1/Planner1
-        - /Local Map [Blue]1/Costmap1
-        - /Local Map [Blue]1/Planner1
+        - /Global Map [Blue1]1/Costmap1
+        - /Global Map [Blue1]1/Planner1
+        - /Local Map [Blue1]1/Costmap1
+        - /Local Map [Blue1]1/Planner1
         - /Global Map [Blue2]1/Costmap1
         - /Global Map [Blue2]1/Planner1
         - /Local Map [Blue2]1/Costmap1
@@ -46,7 +46,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan [Blue]
+    SyncSource: LaserScan [Blue1]
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -115,9 +115,9 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-      Name: RobotModel [Red]
-      Robot Description: /robot_red/robot_description
-      TF Prefix: robot_red
+      Name: RobotModel [Red1]
+      Robot Description: /robot_red1/robot_description
+      TF Prefix: robot_red1
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -180,9 +180,9 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-      Name: RobotModel [Blue]
-      Robot Description: /robot_blue/robot_description
-      TF Prefix: robot_blue
+      Name: RobotModel [Blue1]
+      Robot Description: /robot_blue1/robot_description
+      TF Prefix: robot_blue1
       Update Interval: 0
       Value: true
       Visual Enabled: true
@@ -218,14 +218,14 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: LaserScan [Red]
+      Name: LaserScan [Red1]
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.030000001192092896
       Style: Flat Squares
-      Topic: /robot_red/scan
+      Topic: /robot_red1/scan
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -274,14 +274,14 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: LaserScan [Blue]
+      Name: LaserScan [Blue1]
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.030000001192092896
       Style: Flat Squares
-      Topic: /robot_blue/scan
+      Topic: /robot_blue1/scan
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -314,6 +314,94 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+      Name: RobotModel [Red3]
+      Robot Description: /robot_red3/robot_description
+      TF Prefix: robot_red3
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/LaserScan
+      Color: 255; 140; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: LaserScan [Red3]
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.030000001192092896
+      Style: Flat Squares
+      Topic: /robot_red3/scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Class: rviz/RobotModel
+      Collision Enabled: false
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+      Name: RobotModel [Blue3]
+      Robot Description: /robot_blue3/robot_description
+      TF Prefix: robot_blue3
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/LaserScan
+      Color: 0; 140; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: LaserScan [Blue3]
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.030000001192092896
+      Style: Flat Squares
+      Topic: /robot_blue3/scan
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
@@ -334,7 +422,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Planner Plan [Red]
+      Name: Planner Plan [Red1]
       Offset:
         X: 0
         Y: 0
@@ -344,7 +432,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /robot_red/move_base/NavfnROS/plan
+      Topic: /robot_red1/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -380,7 +468,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Planner Plan [Blue]
+      Name: Planner Plan [Blue1]
       Offset:
         X: 0
         Y: 0
@@ -390,7 +478,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /robot_blue/move_base/NavfnROS/plan
+      Topic: /robot_blue1/move_base/NavfnROS/plan
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -424,7 +512,7 @@ Visualization Manager:
           Draw Behind: true
           Enabled: true
           Name: Costmap
-          Topic: /robot_red/move_base/global_costmap/costmap
+          Topic: /robot_red1/move_base/global_costmap/costmap
           Unreliable: false
           Use Timestamp: false
           Value: true
@@ -448,11 +536,11 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /robot_red/move_base/DWAPlannerROS/global_plan
+          Topic: /robot_red1/move_base/DWAPlannerROS/global_plan
           Unreliable: false
           Value: true
       Enabled: true
-      Name: Global Map [Red]
+      Name: Global Map [Red1]
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -460,7 +548,7 @@ Visualization Manager:
           Color: 0; 0; 0
           Enabled: true
           Name: Polygon
-          Topic: /robot_red/move_base/local_costmap/footprint
+          Topic: /robot_red1/move_base/local_costmap/footprint
           Unreliable: false
           Value: true
         - Alpha: 0.699999988079071
@@ -469,7 +557,7 @@ Visualization Manager:
           Draw Behind: false
           Enabled: true
           Name: Costmap
-          Topic: /robot_red/move_base/local_costmap/costmap
+          Topic: /robot_red1/move_base/local_costmap/costmap
           Unreliable: false
           Use Timestamp: false
           Value: true
@@ -493,11 +581,11 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /robot_red/move_base/DWAPlannerROS/local_plan
+          Topic: /robot_red1/move_base/DWAPlannerROS/local_plan
           Unreliable: false
           Value: true
       Enabled: false
-      Name: Local Map [Red]
+      Name: Local Map [Red1]
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -588,7 +676,7 @@ Visualization Manager:
           Draw Behind: true
           Enabled: true
           Name: Costmap
-          Topic: /robot_blue/move_base/global_costmap/costmap
+          Topic: /robot_blue1/move_base/global_costmap/costmap
           Unreliable: false
           Use Timestamp: false
           Value: true
@@ -612,11 +700,11 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /robot_blue/move_base/DWAPlannerROS/global_plan
+          Topic: /robot_blue1/move_base/DWAPlannerROS/global_plan
           Unreliable: false
           Value: true
       Enabled: true
-      Name: Global Map [Blue]
+      Name: Global Map [Blue1]
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -624,7 +712,7 @@ Visualization Manager:
           Color: 0; 0; 0
           Enabled: true
           Name: Polygon
-          Topic: /robot_blue/move_base/local_costmap/footprint
+          Topic: /robot_blue1/move_base/local_costmap/footprint
           Unreliable: false
           Value: true
         - Alpha: 0.699999988079071
@@ -633,7 +721,7 @@ Visualization Manager:
           Draw Behind: false
           Enabled: true
           Name: Costmap
-          Topic: /robot_blue/move_base/local_costmap/costmap
+          Topic: /robot_blue1/move_base/local_costmap/costmap
           Unreliable: false
           Use Timestamp: false
           Value: true
@@ -657,11 +745,11 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /robot_blue/move_base/DWAPlannerROS/local_plan
+          Topic: /robot_blue1/move_base/DWAPlannerROS/local_plan
           Unreliable: false
           Value: true
       Enabled: false
-      Name: Local Map [Blue]
+      Name: Local Map [Blue1]
     - Class: rviz/Group
       Displays:
         - Alpha: 0.699999988079071
@@ -753,11 +841,11 @@ Visualization Manager:
       Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
-      Name: Amcl Particles [Red]
+      Name: Amcl Particles [Red1]
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /robot_red/particlecloud
+      Topic: /robot_red1/particlecloud
       Unreliable: false
       Value: false
     - Alpha: 1
@@ -785,11 +873,11 @@ Visualization Manager:
       Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
-      Name: Amcl Particles [Blue]
+      Name: Amcl Particles [Blue1]
       Shaft Length: 0.23000000417232513
       Shaft Radius: 0.009999999776482582
       Shape: Arrow (Flat)
-      Topic: /robot_blue/particlecloud
+      Topic: /robot_blue1/particlecloud
       Unreliable: false
       Value: false
     - Alpha: 1
@@ -816,11 +904,11 @@ Visualization Manager:
       Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: Goal [Red]
+      Name: Goal [Red1]
       Shaft Length: 0.5
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /robot_red/move_base_simple/goal
+      Topic: /robot_red1/move_base_simple/goal
       Unreliable: false
       Value: false
     - Alpha: 1
@@ -846,11 +934,11 @@ Visualization Manager:
       Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
-      Name: Goal [Blue]
+      Name: Goal [Blue1]
       Shaft Length: 0.5
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /robot_blue/move_base_simple/goal
+      Topic: /robot_blue1/move_base_simple/goal
       Unreliable: false
       Value: false
     - Alpha: 1
@@ -904,11 +992,11 @@ Visualization Manager:
     - Class: rviz/MoveCamera
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
-      Topic: /robot_red/initialpose
+      Topic: /robot_red1/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
     - Class: rviz/SetGoal
-      Topic: /robot_red/move_base_simple/goal
+      Topic: /robot_red1/move_base_simple/goal
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_red2/initialpose
@@ -918,11 +1006,11 @@ Visualization Manager:
       Topic: /robot_red2/move_base_simple/goal
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
-      Topic: /robot_blue/initialpose
+      Topic: /robot_blue1/initialpose
       X std deviation: 0.5
       Y std deviation: 0.5
     - Class: rviz/SetGoal
-      Topic: /robot_blue/move_base_simple/goal
+      Topic: /robot_blue1/move_base_simple/goal
     - Class: rviz/SetInitialPose
       Theta std deviation: 0.2617993950843811
       Topic: /robot_blue2/initialpose

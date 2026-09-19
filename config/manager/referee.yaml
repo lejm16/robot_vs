@@ -6,6 +6,22 @@ time_limit_s: 0.0
 # true = 裁判启动后自动进入 PLAYING，无需手动发 /game/command start
 auto_start: false
 
+# ===== 自动复位：一局结束后自动开下一局 =====
+auto_reset: true          # 结束后自动复位（回血 + 送回出生点）并开下一局
+auto_reset_delay_s: 6.0   # 结束后停留几秒再复位，留出观战时间
+auto_restart: true        # 复位后直接开下一局；false = 复位后停在 IDLE 等人手动 start
+# 复位方式：gazebo = 调 /gazebo/set_model_state 把车搬回出生点；stats_only = 只回血不挪车
+reset_mode: "gazebo"
+
+# 出生点（复位时用）：如果改了 launch 里各车的初始位姿，这里要同步改
+spawn_poses:
+  robot_red1:  [-2.5,  1.5, -1.5708]
+  robot_red2:  [ 0.0,  1.5, -1.5708]
+  robot_red3:  [ 2.5,  1.5, -1.5708]
+  robot_blue1: [-2.5, -1.5,  1.5708]
+  robot_blue2: [ 0.0, -1.5,  1.5708]
+  robot_blue3: [ 2.5, -1.5,  1.5708]
+
 default_hp: 100
 default_ammo: 50.0
 fire_range: 3.0

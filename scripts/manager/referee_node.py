@@ -14,6 +14,7 @@ from robot_vs.msg import TeamMacroState
 from robot_vs.msg import VisibleEnemies
 from nav_msgs.msg import OccupancyGrid
 from robot_vs.msg import GameState
+from geometry_msgs.msg import PoseWithCovarianceStamped, Quaternion
 
 
 class RefereeNode(object):
@@ -68,6 +69,18 @@ class RefereeNode(object):
         # 游戏状态管理
         self.time_limit_s = float(rospy.get_param("~time_limit_s", 0.0))  # 0 = 不限时
         self.auto_start = bool(rospy.get_param("~auto_start", False))
+
+        # ===== 自动复位：一局结束后自动开下一局 =====
+        # 复位内容 = 回血回弹药 + （仿真下）把车搬回出生点 + 让 amcl 重新定位，
+        # 否则第二局六台车会全挤在上一局的残骸位置。
+        self.auto_reset = bool(rospy.get_param("~auto_reset", False))
+        self.auto_reset_delay_s = float(rospy.get_param("~auto_reset_delay_s", 5.0))
+        self.auto_restart = bool(rospy.get_param("~auto_restart", True))
+        self.reset_mode = str(rospy.get_param("~reset_mode", "gazebo"))
+        self.spawn_poses = self._parse_spawn_poses(rospy.get_param("~spawn_poses", {}))
+        self._set_model_state = None
+        self._initial_pose_pubs = {}
+        self._finish_ts = None
         self._game_status = "IDLE"
         self._game_start_ts = None
         self._final_elapsed = 0.0
@@ -152,6 +165,11 @@ class RefereeNode(object):
             "alive": True,
         }
         self.global_states[ns] = record
+        # 提前建好 initialpose 发布器：复位时要给 amcl 重发初始位姿，
+        # 临时建发布器再立刻 publish 容易丢消息，这里先把连接建立起来。
+        if ns not in self._initial_pose_pubs:
+            self._initial_pose_pubs[ns] = rospy.Publisher(
+                "/%s/initialpose" % ns, PoseWithCovarianceStamped, queue_size=1)
         rospy.loginfo("[referee] tracking robot: ns=%s team=%s", ns, record["team"])
         return record
 
@@ -513,6 +531,7 @@ class RefereeNode(object):
 
             # ---- 胜负判定 + 发布游戏状态 ----
             self._update_game_result()
+            self._maybe_auto_reset()
             self._publish_game_state()
 
             main_rate.sleep()
@@ -543,22 +562,132 @@ class RefereeNode(object):
             "Referee: game PLAYING (%s), time_limit=%.1fs", source, self.time_limit_s
         )
 
-    def _reset_game(self):
-        """复位：恢复所有已发现机器人的 HP/弹药，并回到 IDLE。"""
+    @staticmethod
+    def _parse_spawn_poses(raw):
+        """把 ~spawn_poses 参数（{ns: [x, y, yaw]}）解析成 {ns: (x, y, yaw)}。"""
+        poses = {}
+        if isinstance(raw, dict):
+            for key, value in raw.items():
+                try:
+                    if isinstance(value, (list, tuple)) and len(value) >= 2:
+                        yaw = float(value[2]) if len(value) > 2 else 0.0
+                        poses[str(key).strip().strip("/")] = (
+                            float(value[0]), float(value[1]), yaw)
+                except (TypeError, ValueError):
+                    continue
+        return poses
+
+    def _reset_game(self, restart=False, source="manual"):
+        """复位：回血回弹药 + 送车回出生点，然后回 IDLE 或直接开下一局。"""
         with self._lock:
-            for record in self.global_states.values():
+            robot_ns_list = sorted(self.global_states.keys())
+            for ns in robot_ns_list:
+                record = self.global_states[ns]
                 record["hp"] = int(self.default_hp)
                 record["ammo"] = float(self.default_ammo)
                 record["alive"] = True
-        self._game_status = "IDLE"
-        self._game_start_ts = None
+                pose = self.spawn_poses.get(ns)
+                if pose is not None:
+                    record["x"], record["y"], record["yaw"] = pose
+
+        # 送车回出生点要调 Gazebo 服务，放在锁外做，避免阻塞回调
+        moved = 0
+        for ns in robot_ns_list:
+            pose = self.spawn_poses.get(ns)
+            if pose is None:
+                continue
+            if self._reset_robot_pose(ns, pose[0], pose[1], pose[2]):
+                self._publish_initial_pose(ns, pose[0], pose[1], pose[2])
+                moved += 1
+
+        self._finish_ts = None
         self._final_elapsed = 0.0
         self._game_winner = ""
         self._game_reason = ""
-        rospy.loginfo("Referee: game RESET (hp/ammo restored, status=IDLE)")
+        rospy.loginfo(
+            "Referee: game RESET (%s)：%d 台车回血，%d 台车送回出生点",
+            source, len(robot_ns_list), moved,
+        )
+
+        if restart:
+            self._start_game("auto_reset")
+        else:
+            self._game_status = "IDLE"
+            self._game_start_ts = None
+
+    def _reset_robot_pose(self, ns, x, y, yaw):
+        """用 Gazebo 的 set_model_state 把车搬回出生点；不在仿真里就跳过。"""
+        if self.reset_mode != "gazebo":
+            return False
+
+        if self._set_model_state is None:
+            try:
+                rospy.wait_for_service("/gazebo/set_model_state", timeout=1.0)
+                from gazebo_msgs.srv import SetModelState
+                self._set_model_state = rospy.ServiceProxy(
+                    "/gazebo/set_model_state", SetModelState)
+            except Exception as exc:
+                rospy.logwarn_throttle(
+                    10.0,
+                    "[referee] 拿不到 /gazebo/set_model_state（%s）："
+                    "自动复位只回血、不挪车", exc,
+                )
+                return False
+
+        try:
+            from gazebo_msgs.srv import SetModelStateRequest
+            request = SetModelStateRequest()
+            request.model_state.model_name = str(ns)
+            request.model_state.reference_frame = "world"
+            request.model_state.pose.position.x = float(x)
+            request.model_state.pose.position.y = float(y)
+            request.model_state.pose.position.z = 0.0
+            half_yaw = float(yaw) * 0.5
+            request.model_state.pose.orientation.z = math.sin(half_yaw)
+            request.model_state.pose.orientation.w = math.cos(half_yaw)
+            self._set_model_state(request)
+            return True
+        except Exception as exc:
+            rospy.logwarn("[referee] 复位 %s 的位姿失败: %s", ns, exc)
+            return False
+
+    def _publish_initial_pose(self, ns, x, y, yaw):
+        """给 amcl 重发一次初始位姿，让它立刻在出生点重新定位。"""
+        publisher = self._initial_pose_pubs.get(ns)
+        if publisher is None:
+            publisher = rospy.Publisher(
+                "/%s/initialpose" % ns, PoseWithCovarianceStamped, queue_size=1)
+            self._initial_pose_pubs[ns] = publisher
+
+        message = PoseWithCovarianceStamped()
+        message.header.stamp = rospy.Time.now()
+        message.header.frame_id = "map"
+        message.pose.pose.position.x = float(x)
+        message.pose.pose.position.y = float(y)
+        message.pose.pose.position.z = 0.0
+        half_yaw = float(yaw) * 0.5
+        message.pose.pose.orientation = Quaternion(
+            0.0, 0.0, math.sin(half_yaw), math.cos(half_yaw))
+        covariance = [0.0] * 36
+        covariance[0] = 0.25      # x 方差
+        covariance[7] = 0.25      # y 方差
+        covariance[35] = 0.0685   # yaw 方差
+        message.pose.covariance = covariance
+        publisher.publish(message)
+
+    def _maybe_auto_reset(self):
+        """FINISHED 停留 auto_reset_delay_s 之后自动复位并开下一局。"""
+        if not self.auto_reset or self._game_status != "FINISHED":
+            return
+        if self._finish_ts is None:
+            return
+        if rospy.Time.now().to_sec() - float(self._finish_ts) < self.auto_reset_delay_s:
+            return
+        self._reset_game(restart=self.auto_restart, source="auto_reset")
 
     def _finish_game(self, winner, reason):
         self._final_elapsed = self._elapsed()
+        self._finish_ts = rospy.Time.now().to_sec()
         self._game_status = "FINISHED"
         self._game_winner = str(winner)
         self._game_reason = str(reason)

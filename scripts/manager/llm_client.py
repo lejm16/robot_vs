@@ -71,17 +71,22 @@ class LLMClient(BasePlanner):
 
         robot_ids = [car['id'] for car in team_state]
 
-        rospy.loginfo("=== _rule_plan called ===")
-        rospy.loginfo("robot_ids: %s", robot_ids)
-        rospy.loginfo("team_state: %s", team_state)
-        rospy.loginfo("enemy_state: %s", enemy_state)
-        rospy.loginfo("last_enemy_state: %s", self._last_enemy_state)
+        # 注意：本函数每帧（默认 20 Hz）都会执行，逐帧 loginfo 会瞬间刷爆 rosout
+        # 并拖慢虚拟机，所以这里统一用 throttle 限流。
+        rospy.loginfo_throttle(
+            5.0,
+            "[plan] robot_ids=%s enemy_state=%s last_enemy=%s",
+            robot_ids, enemy_state, self._last_enemy_state,
+        )
 
         # 计算存活数量（用于战术分支）
         alive_count = len(team_state)
         enemy_alive_count = len([e for e in enemy_state if e.get('visible', True)])
 
-        rospy.loginfo("alive_count=%d, enemy_alive_count=%d", alive_count, enemy_alive_count)
+        rospy.loginfo_throttle(
+            5.0, "[plan] alive_count=%d, enemy_alive_count=%d",
+            alive_count, enemy_alive_count,
+        )
 
         threats = self._assess_threats(team_state, enemy_state)
         primary_threat = threats[0] if threats else None
@@ -95,7 +100,7 @@ class LLMClient(BasePlanner):
 
         tasks = self._generate_tasks(team_state, enemy_state, alive_count, enemy_alive_count)
 
-        rospy.loginfo("Final tasks: %s", tasks)
+        rospy.loginfo_throttle(5.0, "[plan] tasks=%s", tasks)
         return tasks
 
     def _extract_state(self, battle_state):
@@ -333,13 +338,16 @@ class LLMClient(BasePlanner):
         # ---- 根据人数对比决定战术模式 ----
         if alive_count > enemy_alive_count:
             tactic_mode = "pursuit"      # 人数优势：追击
-            rospy.loginfo("[Tactic] 人数优势 (%d vs %d) → 追击模式", alive_count, enemy_alive_count)
+            rospy.loginfo_throttle(
+                5.0, "[Tactic] 人数优势 (%d vs %d) → 追击模式", alive_count, enemy_alive_count)
         elif alive_count < enemy_alive_count:
             tactic_mode = "attack_and_retreat"  # 人数劣势：一攻一守
-            rospy.loginfo("[Tactic] 人数劣势 (%d vs %d) → 攻守模式", alive_count, enemy_alive_count)
+            rospy.loginfo_throttle(
+                5.0, "[Tactic] 人数劣势 (%d vs %d) → 攻守模式", alive_count, enemy_alive_count)
         else:
             tactic_mode = "balanced"
-            rospy.loginfo("[Tactic] 人数持平 (%d vs %d) → 平衡模式", alive_count, enemy_alive_count)
+            rospy.loginfo_throttle(
+                5.0, "[Tactic] 人数持平 (%d vs %d) → 平衡模式", alive_count, enemy_alive_count)
 
         # 计算队形/追击位置（在追击模式下，formation_positions 是最后已知位置）
         formation_positions = self._get_formation_positions(
@@ -488,9 +496,9 @@ class LLMClient(BasePlanner):
             if self._last_enemy_state:
                 target_x = sum(e.get('x', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
                 target_y = sum(e.get('y', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
-                rospy.loginfo("[Pursuit] 追击目标: (%.1f, %.1f)", target_x, target_y)
+                rospy.loginfo_throttle(5.0, "[Pursuit] 追击目标: (%.1f, %.1f)", target_x, target_y)
             else:
-                rospy.loginfo("[Pursuit] 无历史位置，朝地图中心推进")
+                rospy.loginfo_throttle(5.0, "[Pursuit] 无历史位置，朝地图中心推进")
 
             positions = {}
             car_ids = sorted([t['id'] for t in team_state])
@@ -509,13 +517,17 @@ class LLMClient(BasePlanner):
 
             offset_scale = 1.5 if self.current_tactic == 'aggressive' else (-0.8 if self.current_tactic == 'defensive' else 0.0)
 
+            # 场地只有 8.25 x 4.15 m：半径 6 m 的队形点会直接飞到墙外，
+            # 被 TaskDispatcher 夹取之后三台车还容易挤在同一个角上。
+            # 这里改成场地内可用的半径，并让 offset_scale 真正起作用（进攻拉开、防守收拢）。
+            radius = 1.6 + offset_scale * 0.5
             positions = {}
             car_ids = sorted([t['id'] for t in team_state])
             for i, car_id in enumerate(car_ids):
                 angle = i * 2.0 * math.pi / 3.0
                 positions[car_id] = {
-                    'x': center_x + math.cos(angle) * 6.0,
-                    'y': center_y + math.sin(angle) * 6.0
+                    'x': center_x + math.cos(angle) * radius,
+                    'y': center_y + math.sin(angle) * radius
                 }
             return positions
 
@@ -532,7 +544,7 @@ class LLMClient(BasePlanner):
         avg_x = sum(e.get('x', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
         avg_y = sum(e.get('y', 0.0) for e in self._last_enemy_state) / len(self._last_enemy_state)
 
-        rospy.loginfo("[Pursuit] 追击目标位置: (%.1f, %.1f)", avg_x, avg_y)
+        rospy.loginfo_throttle(5.0, "[Pursuit] 追击目标位置: (%.1f, %.1f)", avg_x, avg_y)
 
         positions = {}
         car_ids = sorted([t['id'] for t in team_state])
@@ -554,7 +566,7 @@ class LLMClient(BasePlanner):
         for i, car_id in enumerate(car_ids):
             point = scout_points[i % len(scout_points)]
             positions[car_id] = {'x': point['x'], 'y': point['y']}
-            rospy.loginfo("[Scout] %s → (%.1f, %.1f)", car_id, point['x'], point['y'])
+            rospy.loginfo_throttle(5.0, "[Scout] %s → (%.1f, %.1f)", car_id, point['x'], point['y'])
 
         return positions
 

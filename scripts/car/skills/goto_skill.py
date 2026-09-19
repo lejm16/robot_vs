@@ -6,6 +6,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
 
 from skills.base_skill import BaseSkill, RUNNING, SUCCESS, FAILED
+from skills.steering import AvoidanceSteering
 
 
 class GoToSkill(BaseSkill):
@@ -46,6 +47,9 @@ class GoToSkill(BaseSkill):
         self._angle_tolerance = 0.15
         self._obstacle_stop_distance = float(rospy.get_param("~nav_obstacle_stop", 0.5))
         self._has_printed = False
+        self._steering = None
+        # 本次任务实际使用的模式（配置 + 是否处于 move_base 降级期）
+        self._active_use_move_base = True
 
     def start(self, task):
         task = task or {}
@@ -63,7 +67,9 @@ class GoToSkill(BaseSkill):
         self._start_pose = self.skill_manager.get_current_pose()
         self._target_x, self._target_y = self._adjust_target(self._target_x, self._target_y)
 
-        if self._use_move_base:
+        use_move_base = self._use_move_base and not self.skill_manager.nav_fallback_active()
+        self._active_use_move_base = use_move_base
+        if use_move_base:
             goal = PoseStamped()
             goal.header.stamp = rospy.Time.now()
             goal.header.frame_id = self.frame_id
@@ -79,6 +85,17 @@ class GoToSkill(BaseSkill):
             )
         else:
             self.skill_manager.publish_nav_cancel()
+            # 直行模式统一用带绕障的控制律（详见 skills/steering.py）
+            self._steering = AvoidanceSteering(
+                self.skill_manager,
+                speed=self._speed,
+                max_angular=self._angular_speed,
+                align_gain=float(rospy.get_param("~nav_align_gain", 1.6)),
+                lookahead=float(rospy.get_param("~nav_lookahead", 1.1)),
+                front_stop=self._obstacle_stop_distance,
+                target_sector_deg=25.0,
+            )
+            self._steering.reset()
             rospy.loginfo(
                 "[%s] GoToSkill(cmd_vel 直行) start: target=(%.2f, %.2f)",
                 self.skill_manager.ns, self._target_x, self._target_y,
@@ -109,7 +126,7 @@ class GoToSkill(BaseSkill):
 
     def update(self):
         elapsed = rospy.Time.now().to_sec() - self._start_time
-        if self._use_move_base:
+        if self._active_use_move_base:
             return self._update_move_base(elapsed)
         return self._update_direct(elapsed)
 
@@ -130,6 +147,7 @@ class GoToSkill(BaseSkill):
                 self.skill_manager.ns, status,
             )
             self.skill_manager.publish_stop_velocity()
+            self.skill_manager.activate_nav_fallback()
             return FAILED
 
         if elapsed > self._timeout:
@@ -147,10 +165,11 @@ class GoToSkill(BaseSkill):
                 "请依次检查：map_server 是否发出 /map、amcl 是否发出 /%s/amcl_pose、"
                 "/%s/scan 是否有数据、tf 是否连通 "
                 "(map -> %s/odom -> %s/base_footprint)。"
-                "应急可把 config/car 里的 use_move_base 设为 false 走 cmd_vel 直行。",
+                "本车接下来会自动改用自带激光绕障直行。",
                 self.skill_manager.ns, elapsed, self.skill_manager.ns,
                 self.skill_manager.ns, self.skill_manager.ns, self.skill_manager.ns,
             )
+            self.skill_manager.activate_nav_fallback()
             return FAILED
 
         return RUNNING
@@ -191,39 +210,32 @@ class GoToSkill(BaseSkill):
             self.skill_manager.publish_stop_velocity()
             return SUCCESS
 
-        angle_to_target = math.atan2(dy, dx)
+        desired_yaw = math.atan2(dy, dx)
         current_yaw = self.skill_manager.get_current_yaw()
         if current_yaw is None:
             return RUNNING
 
-        angle_diff = angle_to_target - current_yaw
-        while angle_diff > math.pi:
-            angle_diff -= 2 * math.pi
-        while angle_diff < -math.pi:
-            angle_diff += 2 * math.pi
-
-        cmd = Twist()
-
-        # 直行模式没有全局规划，靠激光兜底：前方太近就只转向不前进
-        front = self.skill_manager.min_range_in_sector(0.0, 30.0)
-        if front is not None and front < self._obstacle_stop_distance:
-            rospy.logwarn_throttle(
-                1.0, "[%s] GoToSkill(直行): 前方 %.2fm 有障碍，停止前进并转向",
-                self.skill_manager.ns, front,
+        if self._steering is None:
+            self._steering = AvoidanceSteering(
+                self.skill_manager,
+                speed=self._speed,
+                max_angular=self._angular_speed,
+                align_gain=float(rospy.get_param("~nav_align_gain", 1.6)),
+                lookahead=float(rospy.get_param("~nav_lookahead", 1.1)),
+                front_stop=self._obstacle_stop_distance,
+                target_sector_deg=25.0,
             )
-            cmd.linear.x = 0.0
-            cmd.angular.z = self._angular_speed * (1.0 if angle_diff >= 0.0 else -1.0)
-            self.skill_manager.publish_cmd_vel(cmd)
-            return RUNNING
 
-        if abs(angle_diff) > self._angle_tolerance:
-            cmd.linear.x = 0.0
-            cmd.angular.z = self._angular_speed * angle_diff
-        else:
-            cmd.linear.x = self._speed
-            cmd.angular.z = 0.0
-
+        linear, angular, mode = self._steering.compute(
+            current_yaw, desired_yaw, distance, rospy.Time.now().to_sec())
+        cmd = Twist()
+        cmd.linear.x = linear
+        cmd.angular.z = angular
         self.skill_manager.publish_cmd_vel(cmd)
+        rospy.loginfo_throttle(
+            2.0, "[%s] GoToSkill(直行)[%s] dist=%.2f lin=%.2f ang=%.2f",
+            self.skill_manager.ns, mode, distance, linear, angular,
+        )
         return RUNNING
 
     def stop(self):
