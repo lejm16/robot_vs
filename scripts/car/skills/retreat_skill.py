@@ -33,6 +33,9 @@ class RetreatSkill(BaseSkill):
             target = {}
         self._target_x = float(target.get('x', task.get('target_x', 0.0)))
         self._target_y = float(target.get('y', task.get('target_y', 0.0)))
+        # 撤退点也可能被算到障碍物里，落点先挪到可通行位置
+        self._target_x, self._target_y = self.skill_manager.nearest_free_point(
+            self._target_x, self._target_y)
         self._timeout = float(task.get('timeout', 12.0))
         self._start_time = rospy.Time.now().to_sec()
 

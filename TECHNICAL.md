@@ -235,7 +235,7 @@ roslaunch robot_vs cars.launch
 |-------|------|----------|------|
 | `GoToSkill` | `goto_skill.py` | `action_type = "GOTO"` | 默认走 move_base：发布 `/<ns>/move_base_simple/goal`，等 `/<ns>/move_base/result`（SUCCEEDED→SUCCESS，ABORTED/REJECTED→FAILED）。`~use_move_base: false` 时退化为纯 `cmd_vel` 转向+直行（无避障） |
 | `StopSkill` | `stop_skill.py` | `action_type = "STOP"` | 取消 move_base 目标并向 `/<ns>/cmd_vel` 发布零速度 Twist；立即返回 SUCCESS |
-| `AttackSkill` | `attack_skill.py` | `action_type = "ATTACK"` | 转向目标并保持追击前进；瞄准误差进入容差即按 `fire_cooldown_s` 冷却发布 `FireEvent`，命中判定由裁判完成 |
+| `AttackSkill` | `attack_skill.py` | `action_type = "ATTACK"` | 比例转向（`align_gain * err`，带限幅）+ 追击前进；误差大时原地对准、小时边走边修；车头激光扇区内有障碍则停止前进并绕行；朝向误差小于开火角（还会按 `弹道半宽 / 距离` 收紧）才按 `fire_cooldown_s` 冷却发布 `FireEvent` |
 | `RotateSkill` | `rotate_skill.py` | `action_type = "ROTATE"` | 原地旋转到 `target_yaw`，误差进入 `yaw_tolerance` 后返回 SUCCESS |
 | `RetreatSkill` | `retreat_skill.py` | `action_type = "RETREAT"` | 朝远离敌人的撤退点移动，到达或超时后结束 |
 
@@ -437,8 +437,16 @@ roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true
 | `vision_range` / `fov_deg` | 可见敌人的距离与视野角 |
 | `occ_threshold` / `block_unknown` | 栅格地图遮挡判定阈值，未知区域是否算障碍 |
 
-每次收到的 `FireEvent` 会先结算 1 发弹药，再用 `Bresenham` 直线在 `/map` 上做视线遮挡检查，
-最后对射程内、位于射线 `hit_width` 范围内的敌方小车扣血。
+每次收到的 `FireEvent` 严格按下面顺序判定，**子弹打不穿墙**：
+
+1. 结算 1 发弹药（无弹药/已阵亡则整发作废）；
+2. 对每个敌方小车先做 `Bresenham` 直线遮挡检查（`_has_line_of_sight`），
+   中间隔着墙体或障碍的一律跳过，不产生任何伤害；
+3. 剩下的目标再满足「距离 < `fire_range`」且「到弹道中心线的垂距 < `hit_width`」
+   才扣血。
+
+> 第 2 步是独立于 `_ray_hit` 的一层检查：`_ray_hit` 只判断几何是否落在射线上，
+> 不管中间有没有墙，所以缺了它就会出现"隔着墙也能打中"。
 
 ---
 

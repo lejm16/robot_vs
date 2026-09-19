@@ -44,6 +44,7 @@ class GoToSkill(BaseSkill):
         self._speed = float(rospy.get_param("~nav_speed", 0.4))
         self._angular_speed = float(rospy.get_param("~nav_angular_speed", 0.8))
         self._angle_tolerance = 0.15
+        self._obstacle_stop_distance = float(rospy.get_param("~nav_obstacle_stop", 0.5))
         self._has_printed = False
 
     def start(self, task):
@@ -102,7 +103,9 @@ class GoToSkill(BaseSkill):
                 "[%s] GoToSkill: 目标点 (%.2f, %.2f) 超出地图范围，夹到 (%.2f, %.2f)",
                 self.skill_manager.ns, target_x, target_y, clamped_x, clamped_y,
             )
-        return clamped_x, clamped_y
+
+        # 落在障碍格上的目标点 move_base 一定会失败，就近挪到可通行的地方
+        return self.skill_manager.nearest_free_point(clamped_x, clamped_y)
 
     def update(self):
         elapsed = rospy.Time.now().to_sec() - self._start_time
@@ -200,6 +203,19 @@ class GoToSkill(BaseSkill):
             angle_diff += 2 * math.pi
 
         cmd = Twist()
+
+        # 直行模式没有全局规划，靠激光兜底：前方太近就只转向不前进
+        front = self.skill_manager.min_range_in_sector(0.0, 30.0)
+        if front is not None and front < self._obstacle_stop_distance:
+            rospy.logwarn_throttle(
+                1.0, "[%s] GoToSkill(直行): 前方 %.2fm 有障碍，停止前进并转向",
+                self.skill_manager.ns, front,
+            )
+            cmd.linear.x = 0.0
+            cmd.angular.z = self._angular_speed * (1.0 if angle_diff >= 0.0 else -1.0)
+            self.skill_manager.publish_cmd_vel(cmd)
+            return RUNNING
+
         if abs(angle_diff) > self._angle_tolerance:
             cmd.linear.x = 0.0
             cmd.angular.z = self._angular_speed * angle_diff

@@ -355,12 +355,22 @@ class RefereeNode(object):
                 if not enemy.get("alive", True):
                     continue
 
+                enemy_x = float(enemy.get("x", 0.0))
+                enemy_y = float(enemy.get("y", 0.0))
+
+                # 子弹不能穿墙：先做一次射线遮挡检查，
+                # 被墙体/障碍挡住的子弹直接作废（这是 _ray_hit 之外单独的一层）。
+                if not self._has_line_of_sight(
+                    shooter["x"], shooter["y"], enemy_x, enemy_y
+                ):
+                    continue
+
                 if self._ray_hit(
                     shooter["x"],
                     shooter["y"],
                     shooter["yaw"],
-                    enemy.get("x", 0.0),
-                    enemy.get("y", 0.0),
+                    enemy_x,
+                    enemy_y,
                 ):
                     old_hp = int(enemy.get("hp", self.default_hp))
                     new_hp = max(0, old_hp - self.fire_damage)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import math
 import threading
 
 import actionlib  # 预留给后续 action client 集成使用。
@@ -8,6 +9,7 @@ import rospy
 from actionlib_msgs.msg import GoalID
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry, OccupancyGrid
+from sensor_msgs.msg import LaserScan
 from move_base_msgs.msg import MoveBaseActionResult
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from tf.transformations import euler_from_quaternion
@@ -45,6 +47,11 @@ class SkillManager(object):
         self._pose_warn_stamp = 0.0
         self._latest_twist = Twist()
         self._map_info = None
+        self._map_data = None
+        self._occ_threshold = 50
+        self._latest_scan = None
+        self._latest_scan_stamp = None
+        self._scan_timeout_s = float(rospy.get_param("~scan_timeout_s", 1.0))
 
         self.active_skill = None
         self.active_action = "NONE"
@@ -125,6 +132,12 @@ class SkillManager(object):
             "/map",
             OccupancyGrid,
             self._map_cb,
+            queue_size=1,
+        )
+        self._scan_sub = rospy.Subscriber(
+            "/{}/scan".format(self.ns),
+            LaserScan,
+            self._scan_cb,
             queue_size=1,
         )
 
@@ -242,6 +255,110 @@ class SkillManager(object):
                 'height': msg.info.height,
                 'resolution': msg.info.resolution
             }
+            self._map_data = list(msg.data)
+            self._occ_threshold = int(rospy.get_param("~map_occ_threshold", 50))
+
+    def is_blocked(self, x, y):
+        """(x, y) 是否不可通行（占据格或未知格）。
+
+        取值约定与 map_server 的 OccupancyGrid 一致：-1 未知、0~100 占据概率。
+        地图还没收到时返回 False（不阻拦）。
+        """
+        with self._lock:
+            info = self._map_info
+            data = self._map_data
+            threshold = self._occ_threshold
+        if not info or data is None:
+            return False
+
+        resolution = float(info['resolution'])
+        mx = int((float(x) - float(info['origin_x'])) / resolution)
+        my = int((float(y) - float(info['origin_y'])) / resolution)
+        if mx < 0 or my < 0 or mx >= int(info['width']) or my >= int(info['height']):
+            return True
+        value = int(data[my * int(info['width']) + mx])
+        if value < 0:
+            return True          # 未知区域按不可通行处理（与裁判 block_unknown 一致）
+        return value >= threshold
+
+    def nearest_free_point(self, x, y, max_radius=1.5, step=0.1):
+        """目标点若落在障碍里，就近找一个可通行的替代点（螺旋搜索）。
+
+        找不到就原样返回；地图不可用时也原样返回。
+        """
+        try:
+            x = float(x)
+            y = float(y)
+        except (TypeError, ValueError):
+            return x, y
+
+        with self._lock:
+            if self._map_info is None or self._map_data is None:
+                return x, y
+
+        if not self.is_blocked(x, y):
+            return x, y
+
+        rings = max(1, int(float(max_radius) / float(step)))
+        for ring in range(1, rings + 1):
+            radius = ring * float(step)
+            for index in range(16):
+                angle = index * math.pi / 8.0
+                candidate_x = x + radius * math.cos(angle)
+                candidate_y = y + radius * math.sin(angle)
+                if not self.is_blocked(candidate_x, candidate_y):
+                    rospy.loginfo(
+                        "[%s] 目标点 (%.2f, %.2f) 落在障碍/未知区域，改到 (%.2f, %.2f)",
+                        self.ns, x, y, candidate_x, candidate_y,
+                    )
+                    return candidate_x, candidate_y
+        return x, y
+
+    def _scan_cb(self, msg):
+        now = rospy.Time.now().to_sec()
+        with self._lock:
+            self._latest_scan = msg
+            self._latest_scan_stamp = self._msg_stamp(msg, now)
+
+    def get_scan(self):
+        """返回最近一帧激光；超过 scan_timeout_s 没更新则视为不可用。"""
+        with self._lock:
+            if self._latest_scan is None or self._latest_scan_stamp is None:
+                return None
+            if rospy.Time.now().to_sec() - float(self._latest_scan_stamp) > self._scan_timeout_s:
+                return None
+            return self._latest_scan
+
+    def min_range_in_sector(self, center_deg, half_width_deg):
+        """指定扇区（以车头为 0°，逆时针为正）内的最近障碍距离。
+
+        返回 None 表示该方向上没有可用读数（无激光或全是无效值），
+        调用方应把它当作“未知”，而不是“没有障碍”。
+        """
+        scan = self.get_scan()
+        if scan is None:
+            return None
+
+        center = math.radians(float(center_deg))
+        half_width = math.radians(abs(float(half_width_deg)))
+        best = None
+        angle = float(scan.angle_min)
+        for value in scan.ranges:
+            delta = math.atan2(math.sin(angle - center), math.cos(angle - center))
+            angle += float(scan.angle_increment)
+            if abs(delta) > half_width:
+                continue
+            try:
+                distance = float(value)
+            except (TypeError, ValueError):
+                continue
+            if distance != distance:  # NaN
+                continue
+            if distance < float(scan.range_min) or distance > float(scan.range_max):
+                continue
+            if best is None or distance < best:
+                best = distance
+        return best
 
     def _odom_cb(self, msg):
         now = rospy.Time.now().to_sec()

@@ -83,6 +83,21 @@ python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
 > 需要调整小车活动范围时改 `config/manager/*_manager.yaml` 里的
 > `arena_min_x / arena_max_x / arena_min_y / arena_max_y`（所有下发目标点都会被夹进这个矩形）。
 
+### 场地障碍布局
+
+`world0.world` 里的障碍是**整体 180° 旋转对称**的，保证红蓝完全公平：
+
+| 障碍 | 尺寸 | 位置 | 作用 |
+|------|------|------|------|
+| `Obstacle_Center` | 1.80 × 0.30 | (0, 0) | 挡住中路，双方中路出生时互相看不见 |
+| `Obstacle_Left/Right_Top` | 0.90 × 0.30 | (±2.5, +0.7) | 挡住左右出生通道的视线 |
+| `Obstacle_Left/Right_Bot` | 0.90 × 0.30 | (±2.5, -0.7) | 同上（蓝方一侧） |
+
+设计意图：三条出生通道的正前方视线都被遮住，双方**出生时互相看不见**，
+必须开出去侦察才能交火；同时各通道之间留了 1 m 以上的通行口，
+小车（含 move_base 的膨胀层）能顺利绕行。
+改完世界文件后必须重新生成地图，否则地图和场地会对不上。
+
 ---
 
 ## 仿真跑通检查清单

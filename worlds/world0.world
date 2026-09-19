@@ -225,15 +225,20 @@
         <kinematic>0</kinematic>
       </link>
 
-      <!-- 带空隙的中间障碍墙 -->
-      <link name='Obstacle_Left_Top'>
-        <collision name='Obstacle_Left_Top_Collision'>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+      <!-- 障碍布局（整体 180° 旋转对称，红蓝完全公平）：
+             中间一根横梁 + 两侧各两块掩体，三条出生通道的正前方视线都被挡住，
+             双方出生时互相看不见，必须开出去找敌人；
+             各通道之间留了 1 m 以上的通行口，方便 move_base / 激光避障绕行。
+             改完这里记得重新生成地图（见 README 的地图章节）。
+      -->
+      <link name='Obstacle_Center'>
+        <collision name='Obstacle_Center_Collision'>
+          <geometry><box><size>1.80 0.30 0.3</size></box></geometry>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
         </collision>
-        <visual name='Obstacle_Left_Top_Visual'>
+        <visual name='Obstacle_Center_Visual'>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>1.80 0.30 0.3</size></box></geometry>
           <material>
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
@@ -241,19 +246,39 @@
             </script>
           </material>
         </visual>
-        <pose frame=''>-1.5  1.0 0 0 -0 0</pose>
+        <pose frame=''>0 0 0 0 -0 0</pose>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <link name='Obstacle_Left_Top'>
+        <collision name='Obstacle_Left_Top_Collision'>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
+          <pose frame=''>0 0 0.15 0 -0 0</pose>
+        </collision>
+        <visual name='Obstacle_Left_Top_Visual'>
+          <pose frame=''>0 0 0.15 0 -0 0</pose>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Grey</name>
+            </script>
+          </material>
+        </visual>
+        <pose frame=''>-2.5  0.7 0 0 -0 0</pose>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
       <link name='Obstacle_Left_Bot'>
         <collision name='Obstacle_Left_Bot_Collision'>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
         </collision>
         <visual name='Obstacle_Left_Bot_Visual'>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <material>
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
@@ -261,19 +286,19 @@
             </script>
           </material>
         </visual>
-        <pose frame=''>-1.5 -1.0 0 0 -0 0</pose>
+        <pose frame=''>-2.5 -0.7 0 0 -0 0</pose>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
       <link name='Obstacle_Right_Top'>
         <collision name='Obstacle_Right_Top_Collision'>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
         </collision>
         <visual name='Obstacle_Right_Top_Visual'>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <material>
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
@@ -281,19 +306,19 @@
             </script>
           </material>
         </visual>
-        <pose frame=''>1.5  1.0 0 0 -0 0</pose>
+        <pose frame=''>2.5  0.7 0 0 -0 0</pose>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
       <link name='Obstacle_Right_Bot'>
         <collision name='Obstacle_Right_Bot_Collision'>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
         </collision>
         <visual name='Obstacle_Right_Bot_Visual'>
           <pose frame=''>0 0 0.15 0 -0 0</pose>
-          <geometry><box><size>0.15 1.0 0.3</size></box></geometry>
+          <geometry><box><size>0.90 0.30 0.3</size></box></geometry>
           <material>
             <script>
               <uri>file://media/materials/scripts/gazebo.material</uri>
@@ -301,7 +326,7 @@
             </script>
           </material>
         </visual>
-        <pose frame=''>1.5 -1.0 0 0 -0 0</pose>
+        <pose frame=''>2.5 -0.7 0 0 -0 0</pose>
         <self_collide>0</self_collide>
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
