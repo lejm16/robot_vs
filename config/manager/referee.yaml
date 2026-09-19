@@ -11,7 +11,8 @@ default_ammo: 50.0
 fire_range: 3.0
 hit_width: 0.1
 fire_damage: 20
-vision_range: 2.0
+# 双方出生点相距 3 m，视野至少要够跨过中场，否则永远互相看不见
+vision_range: 3.5
 
 fov_deg: 120.0
 map_topic: "/map"

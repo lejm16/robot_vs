@@ -2,34 +2,34 @@
   <!-- ============================================== -->
   <!-- 1. 核心参数 -->
   <!-- ============================================== -->
-  <arg name="map_file" default="$(find robot_vs)/maps/map_simulation.yaml" doc="全局地图路径"/>
+  <arg name="map_file" default="$(find robot_vs)/maps/world0.yaml" doc="全局地图路径（由 scripts/world_to_map.py 从 world0.world 生成）"/>
   <arg name="world_file" default="$(find robot_vs)/worlds/world0.world" doc="仿真世界"/>
   <arg name="model" default="burger" doc="burger, waffle, waffle_pi"/>
 
   <!-- 红方 3 台初始位姿 -->
   <arg name="robot_red1_x" default="-2.5"/>
-  <arg name="robot_red1_y" default="2.0"/>
+  <arg name="robot_red1_y" default="1.5"/>
   <arg name="robot_red1_a" default="-1.57"/>
 
   <arg name="robot_red2_x" default="0.0"/>
-  <arg name="robot_red2_y" default="2.0"/>
+  <arg name="robot_red2_y" default="1.5"/>
   <arg name="robot_red2_a" default="-1.57"/>
 
   <arg name="robot_red3_x" default="2.5"/>
-  <arg name="robot_red3_y" default="2.0"/>
+  <arg name="robot_red3_y" default="1.5"/>
   <arg name="robot_red3_a" default="-1.57"/>
 
   <!-- 蓝方 3 台初始位姿 -->
   <arg name="robot_blue1_x" default="-2.5"/>
-  <arg name="robot_blue1_y" default="-3.0"/>
+  <arg name="robot_blue1_y" default="-1.5"/>
   <arg name="robot_blue1_a" default="1.57"/>
 
   <arg name="robot_blue2_x" default="0.0"/>
-  <arg name="robot_blue2_y" default="-3.0"/>
+  <arg name="robot_blue2_y" default="-1.5"/>
   <arg name="robot_blue2_a" default="1.57"/>
 
   <arg name="robot_blue3_x" default="2.5"/>
-  <arg name="robot_blue3_y" default="-3.0"/>
+  <arg name="robot_blue3_y" default="-1.5"/>
   <arg name="robot_blue3_a" default="1.57"/>
 
   <!-- ============================================== -->

@@ -2,3 +2,9 @@ loop_hz: 10.0
 team: 1          # 1代表蓝方
 default_hp: 100.0
 default_ammo: 50.0
+
+# 导航方式：true 用 move_base 规划（会绕开墙和障碍，需要 amcl + map + scan 正常）
+#          false 退化成“原地转向 + 直行”的纯 cmd_vel 驾驶，无避障，仅调试用
+use_move_base: true
+# move_base 在这段时间内没结果、车也没动，就判失败并提示检查定位链路
+nav_wait_s: 5.0

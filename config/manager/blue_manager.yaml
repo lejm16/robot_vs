@@ -4,6 +4,11 @@ loop_hz: 20.0
 state_timeout_s: 2.0
 llm_enabled: false
 default_patrol_points: []
+# 场地边界：所有下发目标点都会被夹进这个矩形（对应 worlds/world0.world 的围墙）
+arena_min_x: -3.9
+arena_max_x: 3.9
+arena_min_y: -1.9
+arena_max_y: 1.9
 llm:
   enabled: true
   service_url: "http://127.0.0.1:8002/plan"

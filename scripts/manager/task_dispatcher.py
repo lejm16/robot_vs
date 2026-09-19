@@ -29,8 +29,27 @@ class TaskDispatcher(object):
 		self._last_task_signature = {}
 		self._last_task_id = {}
 
+		# 场地边界：所有下发的目标点都会被夹进这个矩形，防止小车往场外开
+		# 默认值对应 worlds/world0.world（围墙 x=±4.05, y=±2.0，留出车身余量）
+		self.arena_min_x = float(rospy.get_param("~arena_min_x", -3.9))
+		self.arena_max_x = float(rospy.get_param("~arena_max_x", 3.9))
+		self.arena_min_y = float(rospy.get_param("~arena_min_y", -1.9))
+		self.arena_max_y = float(rospy.get_param("~arena_max_y", 1.9))
+
 		for ns in self.my_cars:
 			self._ensure_publisher(ns)
+
+	def _to_number(self, value, default=0.0):
+		try:
+			return float(value)
+		except (TypeError, ValueError):
+			return float(default)
+
+	def _clamp_to_arena(self, value, low, high):
+		"""把坐标夹到场地范围内（参数写反了也能自愈）。"""
+		if high < low:
+			low, high = high, low
+		return max(low, min(self._to_number(value, low), high))
 
 	def _ensure_publisher(self, ns):
 		if ns in self._publishers:
@@ -140,8 +159,16 @@ class TaskDispatcher(object):
 		target = task.get("target", {})
 		if not isinstance(target, dict):
 			target = {}
-		msg.target_x = float(target.get("x", 0.0))
-		msg.target_y = float(target.get("y", 0.0))
+		raw_x = self._to_number(target.get("x", 0.0), 0.0)
+		raw_y = self._to_number(target.get("y", 0.0), 0.0)
+		msg.target_x = self._clamp_to_arena(raw_x, self.arena_min_x, self.arena_max_x)
+		msg.target_y = self._clamp_to_arena(raw_y, self.arena_min_y, self.arena_max_y)
+		if abs(msg.target_x - raw_x) > 1e-6 or abs(msg.target_y - raw_y) > 1e-6:
+			rospy.loginfo_throttle(
+				5.0,
+				"dispatch: 目标点 (%.2f, %.2f) 超出场地，已夹到 (%.2f, %.2f)",
+				raw_x, raw_y, msg.target_x, msg.target_y,
+			)
 		msg.target_yaw = float(target.get("yaw", 0.0))
 
 		msg.mode = int(task.get("mode", 0))

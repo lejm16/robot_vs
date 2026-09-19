@@ -16,6 +16,7 @@
 - [8. TF 坐标系前缀隔离](#8-tf-坐标系前缀隔离)
 - [9. 仿真与现实的一致性设计](#9-仿真与现实的一致性设计)
 - [10. 比赛状态机与裁判判定](#10-比赛状态机与裁判判定)
+- [11. 仿真定位与导航链路](#11-仿真定位与导航链路)
 
 ---
 
@@ -232,7 +233,7 @@ roslaunch robot_vs cars.launch
 
 | Skill | 文件 | 触发条件 | 行为 |
 |-------|------|----------|------|
-| `GoToSkill` | `goto_skill.py` | `action_type = "GOTO"` | 纯 `cmd_vel` 导航：先原地转向目标，再直行前进，距离小于容差后刹车并返回 SUCCESS |
+| `GoToSkill` | `goto_skill.py` | `action_type = "GOTO"` | 默认走 move_base：发布 `/<ns>/move_base_simple/goal`，等 `/<ns>/move_base/result`（SUCCEEDED→SUCCESS，ABORTED/REJECTED→FAILED）。`~use_move_base: false` 时退化为纯 `cmd_vel` 转向+直行（无避障） |
 | `StopSkill` | `stop_skill.py` | `action_type = "STOP"` | 取消 move_base 目标并向 `/<ns>/cmd_vel` 发布零速度 Twist；立即返回 SUCCESS |
 | `AttackSkill` | `attack_skill.py` | `action_type = "ATTACK"` | 转向目标并保持追击前进；瞄准误差进入容差即按 `fire_cooldown_s` 冷却发布 `FireEvent`，命中判定由裁判完成 |
 | `RotateSkill` | `rotate_skill.py` | `action_type = "ROTATE"` | 原地旋转到 `target_yaw`，误差进入 `yaw_tolerance` 后返回 SUCCESS |
@@ -438,3 +439,74 @@ roslaunch robot_vs simulation/3v3vs_simulation.launch auto_start:=true
 
 每次收到的 `FireEvent` 会先结算 1 发弹药，再用 `Bresenham` 直线在 `/map` 上做视线遮挡检查，
 最后对射程内、位于射线 `hit_width` 范围内的敌方小车扣血。
+
+---
+
+## 11. 仿真定位与导航链路
+
+### 为什么需要一张"真地图"
+
+仿真场地由 `worlds/world0.world` 里的静态 box 拼成（外围 4 面墙 + 4 根障碍柱），
+而 `map_server` 读的是**离线地图文件**。如果地图和世界对不上：
+
+- RViz 里看不到场地；
+- AMCL 拿激光去匹配一张没有墙的地图，位姿会漂甚至不收敛；
+- move_base 的全局代价地图上没有障碍，规划出来的路径会直接穿墙；
+- 裁判的视线遮挡判定（依赖 `/map`）也会失效。
+
+因此地图必须是场地的真实投影。仓库提供了离线生成工具：
+
+```bash
+python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
+```
+
+脚本把世界里所有 box 几何体按 `link pose + 局部 pose` 变换到世界坐标，
+再按给定分辨率栅格化成占据栅格，同时算出 `origin` 写进 YAML。
+输出 `maps/world0.pgm`（map_server 用）、`maps/world0.png`（人看）、`maps/world0.yaml`。
+
+> 生成出来的地图默认把围墙之外标成**未知(205)**，墙内为自由(254)，墙体/障碍为占据(0)。
+> 裁判的 `block_unknown: true` 会把未知区域当作遮挡，正好挡住场外。
+
+### 单台小车的完整链路
+
+```
+Gazebo(diff_drive 插件) ──/<ns>/odom──┐
+                                      ├─▶ amcl ──/<ns>/amcl_pose──┐
+Gazebo(laser 插件) ────/<ns>/scan──┘                             │
+map_server ──/map────────────────────────────────────────────────┤
+                                                                 ▼
+                                              SkillManager 缓存 /<ns>/odom 与 /<ns>/amcl_pose
+                                                                 ▼
+                    GoToSkill → /<ns>/move_base_simple/goal → move_base → /<ns>/cmd_vel
+                                                                 ▼
+                                      RobotState(10 Hz) → 裁判 / Manager
+```
+
+这条链上任何一环断了，表现都是"车不动"，但原因完全不同。所以
+`GoToSkill` 在 `move_base` 模式下会做一次自检：如果 `nav_wait_s`（默认 5 s）
+内既没有 `move_base/result`、车也没有位移，就直接判 FAILED 并打印需要检查的
+地图 / amcl / scan / tf，避免"静静地卡住"。
+
+### 关键话题与坐标帧
+
+| 项目 | 取值 |
+|------|------|
+| 规划目标 | `/<ns>/move_base_simple/goal`（`geometry_msgs/PoseStamped`，frame=`map`） |
+| 规划结果 | `/<ns>/move_base/result`（actionlib，status 3 = 成功） |
+| 定位输出 | `/<ns>/amcl_pose` |
+| 里程计 | `/<ns>/odom` |
+| 激光 | `/<ns>/scan` |
+| TF 链 | `map → <ns>/odom → <ns>/base_footprint → <ns>/base_scan` |
+
+> 坐标帧前缀来自各车 launch 里的 `tf_prefix`，必须与 `amcl.launch` /
+> `move_base.launch` 里传入的 `robot_namespace` 一致。
+> 另外，Gazebo 里 `spawn_model` 的 `-model` 名字要和 ROS 命名空间同名
+> （例如 `-model robot_red1` 对应 `ns="robot_red1"`），否则插件的话题前缀会对不上。
+
+### 场地约束
+
+`TaskDispatcher` 是所有任务的唯一出口，因此把边界检查放在这里：
+`config/manager/*_manager.yaml` 的 `arena_min_x / arena_max_x / arena_min_y / arena_max_y`
+（默认 `-3.9 / 3.9 / -1.9 / 1.9`）会把每一个下发目标点夹进场地内。
+这样即使策略层给出了场外的巡逻点或撤退点，小车也不会去撞墙，日志里会打印
+`目标点 ... 超出场地，已夹到 ...`。

@@ -66,6 +66,52 @@ rostopic pub -1 /game/command std_msgs/String "data: 'start'"
 
 ---
 
+## 地图
+
+`maps/world0.pgm / world0.png / world0.yaml` 是由脚本从 `worlds/world0.world`
+离线生成的，和仿真场地（8.25 m × 4.15 m 围墙 + 4 根障碍柱）完全一致。
+改了世界文件后重新生成一次即可：
+
+```bash
+python3 scripts/world_to_map.py --world worlds/world0.world --out maps/world0
+```
+
+> 仓库里原有的 `maps/map_simulation*.png` 只是占位图（整张空白 + 中间一个黑方块），
+> 和 world0.world 对不上，仿真 launch 已不再使用它们。
+>
+> 脚本会把场地边界一并算好写进 yaml 的 `origin`，不要手改；
+> 需要调整小车活动范围时改 `config/manager/*_manager.yaml` 里的
+> `arena_min_x / arena_max_x / arena_min_y / arena_max_y`（所有下发目标点都会被夹进这个矩形）。
+
+---
+
+## 仿真跑通检查清单
+
+仿真里有 **地图 → 定位 → 规划 → 决策** 四条链路，任何一条断了都会表现成
+“车不动 / 打不起来”。按顺序确认：
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
+| 地图 | `rostopic echo -n1 /map/info` | `width: 363  height: 199  resolution: 0.025` |
+| 激光 | `rostopic hz /robot_red1/scan` | 稳定出数据 |
+| 里程计 | `rostopic hz /robot_red1/odom` | 稳定出数据 |
+| 定位 | `rostopic hz /robot_red1/amcl_pose` | 稳定出数据 |
+| TF 链 | `rosrun tf tf_echo map robot_red1/base_footprint` | 能打变换 |
+| 任务下发 | `rostopic echo /robot_red1/car_task` | 出现 GOTO / ATTACK |
+| 机器人上报 | `rostopic echo -n1 /robot_red1/robot_state` | 坐标不是 (0,0) 且随车变化 |
+| 比赛状态 | `rostopic echo /game/state` | `status: "PLAYING"` |
+
+常见现象与处理：
+
+| 现象 | 多半是 | 处理 |
+|------|--------|------|
+| 车完全不动，日志里出现 `GoToSkill: ... move_base 没有返回结果、车也没有移动` | 地图 / 定位 / 话题名断了 | 按上表逐项排查；应急可在 `config/car/*.yaml` 里把 `use_move_base` 设为 `false`（纯 cmd_vel 直行，无避障，仅验证用） |
+| 所有车坐标都是 (0,0)，裁判永远打不中 | `/<ns>/odom`、`/<ns>/amcl_pose` 收不到数据 | 确认 gazebo 插件的话题是不是带命名空间（`rostopic list \| grep -E 'cmd_vel\|odom\|scan'`） |
+| 车往场外/墙里开 | 目标点在场地外 | 检查 `arena_*` 参数；`TaskDispatcher` 会自动夹目标点并打印 `超出场地，已夹到` |
+| 双方互相看不见 | 视野太小 | `config/manager/referee.yaml` 的 `vision_range`（默认 3.5 m）与 `fov_deg` |
+
+---
+
 ## 文档索引
 
 | 文档 | 内容 |

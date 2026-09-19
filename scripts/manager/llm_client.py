@@ -374,7 +374,7 @@ class LLMClient(BasePlanner):
                     target={'x': retreat_x, 'y': retreat_y},
                     mode=0,
                     reason='low hp ({:.0f}) retreat'.format(hp),
-                    timeout=6.0
+                    timeout=12.0
                 )
                 continue
 
@@ -418,7 +418,7 @@ class LLMClient(BasePlanner):
                         target={'x': retreat_x, 'y': retreat_y},
                         mode=0,
                         reason='{} retreat (掩护)'.format(role),
-                        timeout=6.0
+                        timeout=12.0
                     )
                     continue
 
@@ -443,7 +443,7 @@ class LLMClient(BasePlanner):
                         target=pos,
                         mode=1,
                         reason='pursuit (追击位置)',
-                        timeout=8.0
+                        timeout=20.0
                     )
                 continue
 
@@ -466,7 +466,7 @@ class LLMClient(BasePlanner):
                 target=pos,
                 mode=1,
                 reason='formation move ({})'.format(role),
-                timeout=8.0
+                timeout=20.0
             )
 
         return tasks
@@ -542,11 +542,11 @@ class LLMClient(BasePlanner):
         return positions
 
     def _get_scout_positions(self, team_state):
-        """分散侦察点"""
+        """分散侦察点（必须落在场地内，world0.world 围墙为 x=±4.05 / y=±2.0）。"""
         scout_points = [
-            {'x': 6.0, 'y': 6.0},
-            {'x': -6.0, 'y': 6.0},
-            {'x': 0.0, 'y': -6.0},
+            {'x': 3.2, 'y': 1.2},
+            {'x': -3.2, 'y': 1.2},
+            {'x': 0.0, 'y': -1.5},
         ]
 
         positions = {}

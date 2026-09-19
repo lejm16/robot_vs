@@ -2,6 +2,9 @@ discover_hz: 2.0
 display_hz: 20.0
 trajectory_lifetime: 0.5
 show_trajectory_line: true
+# 弹道显示范围要和 referee.yaml 的命中判定保持一致，否则画出来的和实际打中的不一样
+fire_range: 3.0
+hit_width: 0.1
 chassis_enabled: true
 chassis_radius: 0.20
 chassis_height: 0.08

@@ -18,7 +18,7 @@ class RetreatSkill(BaseSkill):
         self._target_x = 0.0
         self._target_y = 0.0
         self._start_time = None
-        self._timeout = 6.0
+        self._timeout = 12.0
         self._retreat_speed = 0.4
         self._arrival_tolerance = 0.5
 
@@ -33,7 +33,7 @@ class RetreatSkill(BaseSkill):
             target = {}
         self._target_x = float(target.get('x', task.get('target_x', 0.0)))
         self._target_y = float(target.get('y', task.get('target_y', 0.0)))
-        self._timeout = float(task.get('timeout', 6.0))
+        self._timeout = float(task.get('timeout', 12.0))
         self._start_time = rospy.Time.now().to_sec()
 
         rospy.loginfo("[RetreatSkill] start: target=(%.2f, %.2f)", self._target_x, self._target_y)
